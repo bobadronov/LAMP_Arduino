@@ -1,3 +1,8 @@
+// Функция для перезапуска ESP
+void espRestart();
+// Функция для сохранения новых учетных данных WiFi
+void saveNewCreds(const String &ssid, const String &password, const String &deviceName);
+
 void sendCurrentStatus(AsyncWebSocket *server) {
   // Создаем JSON объект
   StaticJsonDocument<200> jsonDoc;
@@ -40,14 +45,26 @@ void handleTimeUpdate(String timeData) {
     Serial.println("Ошибка парсинга JSON: " + String(error.c_str()));
     return;
   }
-  // Извлечение данных из JSON
-  uint8_t hour = doc["hour"] | -1;  // Используем значение по умолчанию -1
-  uint8_t minute = doc["minute"] | -1;
-  if (hour != -1 && minute != -1) {
-    Serial.println("Получено время: " + String(hour) + ":" + String(minute));
+    // Извлечение данных из JSON с безопасными значениями по умолчанию
+  uint8_t hour = doc["hour"] | 0;  // Значение по умолчанию: 0 (часы)
+  uint8_t minute = doc["minute"] | 0;  // Значение по умолчанию: 0 (минуты)
+  uint8_t day = doc["day"] | 1;  // Значение по умолчанию: 1 (день)
+  uint8_t month = doc["month"] | 1;  // Значение по умолчанию: 1 (месяц)
+  uint16_t year = doc["year"] | 2024;  // Значение по умолчанию: 2024 (год)
+
+  // Проверка корректности извлеченных данных
+  if (hour < 24 && minute < 60) {
+    // Если данные времени корректны
     timerHour = hour;
     timerMinute = minute;
+    timerDay = day;
+    timerMonth = month;
+    timerYear = year;
     timerIsActive = true;  // Устанавливаем флаг активности таймера
+
+    // Печать полученных данных
+    // Serial.println("Получено время: " + String(hour) + ":" + String(minute));
+    // Serial.println("Дата: " + String(day) + "/" + String(month) + "/" + String(year));
   } else {
     Serial.println("Некорректные данные времени");
   }
@@ -69,18 +86,13 @@ void onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       timerHour = 0;
       timerMinute = 0;
       timerIsActive = false;  // Устанавливаем флаг активности таймера
+      // Serial.println("CANCEL_TIMER");
     } else {
       Serial.println("Unknown message format");
       Serial.println(message);
     }
   }
 }
-
-// Функция для перезапуска ESP
-void espRestart();
-
-// Функция для сохранения новых учетных данных WiFi
-void saveNewCreds(const String &ssid, const String &password, const String &deviceName);
 
 // Обработка WiFi-сообщений
 void handleWiFiMessage(const String &jsonPart) {
@@ -91,11 +103,11 @@ void handleWiFiMessage(const String &jsonPart) {
       String ssid = doc["ssid"].as<String>();
       String password = doc["password"].as<String>();
       String deviceName = doc["deviceName"].as<String>();
-      Serial.println("Received WiFi setup:");
-      Serial.print("SSID: ");
-      Serial.println(ssid);
-      Serial.print("Password: ");
-      Serial.println(password);
+      // Serial.println("Received WiFi setup:");
+      // Serial.print("SSID: ");
+      // Serial.println(ssid);
+      // Serial.print("Password: ");
+      // Serial.println(password);
       saveNewCreds(ssid, password, deviceName);
     }
   } else {
@@ -118,21 +130,21 @@ void handleSetupMessage(const String &jsonPart) {
 void parseCommonFields(const DynamicJsonDocument &doc) {
   if (doc.containsKey("ledState")) {
     ledState = doc["ledState"].as<bool>();
-    Serial.print("ledState: ");
-    Serial.println(ledState);
+    // Serial.print("ledState: ");
+    // Serial.println(ledState);
   }
   if (doc.containsKey("color")) {
     String colorHex = doc["color"].as<String>();
-    Serial.print("Color: ");
-    Serial.println(colorHex);
+    // Serial.print("Color: ");
+    // Serial.println(colorHex);
     // Преобразование цвета из HEX в RGB
     long newColor = strtol(colorHex.c_str() + 1, NULL, 16);  // Пропускаем '#'
     color = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);
   }
   if (doc.containsKey("currentMode")) {
     uint8_t mode = doc["currentMode"].as<uint8_t>();
-    Serial.print("CurrentMode: ");
-    Serial.println(mode);
+    // Serial.print("CurrentMode: ");
+    // Serial.println(mode);
     currentMode = mode;
   }
   if (doc.containsKey("flagIsStatic")) {
@@ -140,13 +152,13 @@ void parseCommonFields(const DynamicJsonDocument &doc) {
   }
   if (doc.containsKey("flagSpeed")) {
     flagSpeed = doc["flagSpeed"].as<uint8_t>();
-    Serial.print("Flag speed set to: ");
-    Serial.println(flagSpeed);
+    // Serial.print("Flag speed set to: ");
+    // Serial.println(flagSpeed);
   }
   if (doc.containsKey("rainbowSpeed")) {
     rainbowSpeed = doc["rainbowSpeed"].as<float>();
-    Serial.print("Flag speed set to: ");
-    Serial.println(flagSpeed);
+    // Serial.print("Flag speed set to: ");
+    // Serial.println(flagSpeed);
   }
 }
 

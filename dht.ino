@@ -7,10 +7,10 @@ void updateDHT() {
     float newHum = dht.readHumidity();
     // Обновление температуры, если чтение прошло успешно
     temperature = isnan(newTemp) ? 0.0 : newTemp;
-    Serial.printf("Temperature updated: %.2f\n", temperature);
+    // Serial.printf("Temperature updated: %.2f\n", temperature);
     // Обновление влажности, если чтение прошло успешно
     humidity = isnan(newHum) ? 0.0 : newHum;
-    Serial.printf("Humidity updated: %.2f\n", humidity);
+    // Serial.printf("Humidity updated: %.2f\n", humidity);
     // Логирование ошибок
     if (isnan(newTemp) || isnan(newHum)) {
       Serial.println("Failed to read temperature.");

@@ -206,19 +206,6 @@ void flagMode() {
   }
 }
 
-const unsigned long shortInterval = 1000;  // Интервал для мигания при отсутствии подключения (1 секунда)
-const unsigned long longInterval = 5000;   // Интервал для мигания при подключении (5 секунд)
-
-void blinkLED(unsigned long interval) {
-  unsigned long previousMillis = 0;
-  static bool onBoardLedState = false;
-  if (millis() - previousMillis >= interval) {
-    previousMillis = millis();  // Обновляем время последнего переключения
-    onBoardLedState = !onBoardLedState;            // Инвертируем состояние светодиода
-    digitalWrite(LED_BUILTIN, !onBoardLedState);
-  }
-}
-
 void updateLEDState() {
   // Вызываем текущий режим на основе текущего времени
   if (ledState) {
@@ -261,6 +248,4 @@ void updateLEDState() {
     fadeToBlackBy(leds, NUM_LEDS, 2);  // Постепенно выключить ленту
     FastLED.show();
   }
-
-  blinkLED(WiFi.status() == WL_CONNECTED ? longInterval : shortInterval);
 }

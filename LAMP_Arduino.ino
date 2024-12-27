@@ -1,15 +1,18 @@
 /*
-  https://github.com/CDFER/Captive-Portal-ESP32/tree/main
-  Есп пытаеться подключиться к WiFi сети и в случае неудачи
-  переключиться в режим точки доступа для предоставления доступа к устройству.
-  Там вы можете подключиться к точке доступа и с помощью приложения настроить WiFi,
-  или по адресу: http://device_name.local/wifi .
-  Управление: http://device_name.local/ .
-  Обновление прошивки: http://device_name.local/update .
-  (http://main_led.local/update)
-  TODO:
-  Управление енкодером
+    https://github.com/CDFER/Captive-Portal-ESP32/tree/main
+    ESP tries to connect to WiFi network and if it fails,
+    switch to access point mode to provide access to the device.
+    There you can connect to the access point and use the app to configure WiFi,
+    or at: http://device_name.local/wifi .
+    Management: http://device_name.local/ .
+    Firmware update: http://device_name.local/update .
+    (http://main_led.local/update)
+    TODO:
+      Encoder management
+      GyverNTP
 */
+
+const char *VERSION = "0.0.3";
 
 #include <ArduinoJson.h>
 #include <FastLED.h>
@@ -21,13 +24,16 @@
 #include <DHT.h>
 #include <esp_wifi.h>
 #include <GyverDS3231.h>
+#include <GyverNTP.h>
+#include <AutoOTA.h>
+
 #define AP_SSID "ESP32-AP-LED"
 #define AP_PASSWORD "123456789"
 // String SSID = "krishome";
 // String PASSWORD = "sladkaya";
 String SSID = "VapeCity";
 String PASSWORD = "ivus31415926";
-String hostname = "ESP32-LED";  // Имя хоста для mDNS
+String HOSTNAME = "ESP32-LED";  // Имя хоста для mDNS
 // Настройки DHT11
 #define DHT_PIN 15
 #define DHT_TYPE DHT11
@@ -35,7 +41,7 @@ DHT dht(DHT_PIN, DHT_TYPE);
 // Настройки WebSocket
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
-
+AutoOTA ota(VERSION, "bobadronov/LAMP_Arduino");
 const char *modeList[] = {
   "STATIC_COLOR",    // Однотонный статический цвет
   "RAINBOW",         // Радуга
@@ -70,9 +76,12 @@ float humidity = 0.0;
 uint8_t currentMode = 0;
 // timer
 GyverDS3231 ds;
-bool timerIsActive = false;
 uint8_t timerHour = 0;
 uint8_t timerMinute = 0;
+uint8_t timerDay = 1;
+uint8_t timerMonth = 1;
+uint16_t timerYear = 2024;
+bool timerIsActive = false;
 
 Preferences preferences;
 
@@ -91,10 +100,10 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 // Настройка Сети и служб
 void setupNetwork();
 // Timer
-void checkTimer();
+void checkTimer(AsyncWebSocket *server);
 
 void setup() {
- 
+  setStampZone(2);
   Serial.setTxBufferSize(1024);
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -107,7 +116,7 @@ void setup() {
   setupNetwork();
 
   // Start mDNS
-  if (MDNS.begin(hostname)) {
+  if (MDNS.begin(HOSTNAME)) {
     Serial.println("mDNS responder started");
     Serial.println("You can access the server at http://esp32.local/");
     MDNS.addService("http", "tcp", 80);
@@ -121,10 +130,18 @@ void setup() {
   server.begin();
 
   Wire.begin();
-  setStampZone(-2);
-  if (!ds.begin()) ds.setBuildTime();
 
+  if (!ds.begin()) ds.setBuildTime();
+  String ver, notes;
+  if (ota.checkUpdate(&ver, &notes)) {
+    Serial.println(ver);
+    Serial.println(notes);
+    ota.update();
+  }
   Serial.println("\nSetup completed!");
+  Serial.println();
+  Serial.print("Version ");
+  Serial.println(ota.version());
 }
 
 void loop() {
@@ -133,8 +150,8 @@ void loop() {
   updateLEDState();
   updateDHT();
   if (dnsServerStarted) dnsServer.processNextRequest();
-  if (ds.tick() && timerIsActive) {
-    Serial.println(ds.toString());  // вывод даты и времени строкой
+  checkTimer(&ws);
+  if (ota.tick()) {
+    Serial.println((int)ota.getError());
   }
-  checkTimer();
 }

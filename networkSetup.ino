@@ -106,9 +106,9 @@ void startCaptivePortal() {
     if (request->hasParam("password", true)) {
       password = request->getParam("password", true)->value();
     }
-    Serial.println("Received Wi-Fi credentials:");
-    Serial.println("SSID: " + ssid);
-    Serial.println("Password: " + password);
+    // Serial.println("Received Wi-Fi credentials:");
+    // Serial.println("SSID: " + ssid);
+    // Serial.println("Password: " + password);
     saveNewCreds(ssid, password, "ESP_LED");
     // Сохранение данных в EEPROM или другой постоянной памяти (реализация по желанию)
     request->send(200, "text/html", "<h1>Wi-Fi settings saved. Please restart the device.</h1>");
@@ -155,7 +155,7 @@ void startCaptivePortal() {
   server.onNotFound([](AsyncWebServerRequest *request) {
     request->redirect(localIPURL);
   });
-  Serial.println("Captive Portal started.");
+  // Serial.println("Captive Portal started.");
   Serial.print("AP IP Address: ");
   Serial.println(WiFi.softAPIP());
 }
@@ -175,7 +175,7 @@ void setupNetwork() {
     Serial.println("Connecting to WiFi...");
   }
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi connection failed. Starting Captive Portal...");
+    Serial.println("WiFi connection failed. Starting AP Mode...");
     startCaptivePortal();
   } else {
     digitalWrite(LED_BUILTIN, HIGH);
