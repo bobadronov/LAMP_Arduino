@@ -54,3 +54,10 @@ LAMP_Arduino is a project for creating a smart LED lamp controlled by an ESP32 m
 1. Clone this repository:
    ```bash
    git clone https://github.com/yourusername/LAMP_Arduino.git
+   
+   https://github.com/bobadronov/LAMP_Arduino.git
+
+## TODO:
+  Implement encoder management for additional input options.
+  Integrate GyverNTP to fetch and synchronize time from an NTP server.
+  
