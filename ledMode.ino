@@ -10,10 +10,14 @@ void normalMode() {
 void rainbowMode() {
   static uint8_t hue = 0;
   static unsigned long lastUpdate = 0;
-  if (millis() - lastUpdate >= 2 * rainbowSpeed) {
+  if (millis() - lastUpdate >= 3 * rainbowSpeed) {
     lastUpdate = millis();
-    for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = CHSV(hue + (i * 10), 255, 255);
+    if (rainbowIsStatic) {
+      fill_solid(leds, NUM_LEDS, CHSV(hue, 255, 255));
+    } else {
+      for (int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = CHSV(hue + (i * 10), 255, 255);
+      }
     }
     hue++;
     FastLED.show();
@@ -81,15 +85,26 @@ void colorWipeMode() {
   static unsigned long lastUpdate = 0;
   const unsigned long interval = 100;  // Интервал обновления
   static int index = 0;
+  static int direction = 1;  // Направление (1 - вправо, -1 - влево)
 
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
-    leds[index] = color;  // Заливаем текущий светодиод
-    index++;
-    if (index >= NUM_LEDS) {
-      fill_solid(leds, NUM_LEDS, CRGB::Black);  // Выключить светодиоды
-      index = 0;                                // Возврат в начало
+
+    // Очистить предыдущий светодиод
+    leds[index] = CRGB::Black;
+
+    // Обновить индекс в зависимости от направления
+    index += direction;
+
+    // Если дошли до конца или в начало, меняем направление
+    if (index >= NUM_LEDS || index < 0) {
+      direction = -direction;  // Меняем направление
+      index += direction;      // Корректируем индекс, чтобы не выйти за пределы
     }
+
+    // Заливаем новый светодиод
+    leds[index] = color;
+
     FastLED.show();
   }
 }
@@ -128,9 +143,10 @@ void fireMode() {
     }
 
     // Дополнительный эффект мерцания
-    for (int i = 0; i < NUM_LEDS / 15; i++) {
-      int flickerPos = random(NUM_LEDS);
-      leds[flickerPos] = CRGB::White;  // Вспышки белого цвета
+    int flickerCount = random(5, 15);  // Увеличиваем количество мерцаний
+    for (int i = 0; i < flickerCount; i++) {
+      int flickerPos = random(NUM_LEDS);  // Выбираем случайную позицию на всей ленте
+      leds[flickerPos] = CRGB::White;     // Вспышки белого цвета
     }
 
     FastLED.show();  // Отображаем результат на светодиодах
@@ -206,6 +222,18 @@ void flagMode() {
   }
 }
 
+void customMode() {
+  static unsigned long lastUpdate = 0;
+  const unsigned long interval = 50;  // Интервал обновления
+  if (millis() - lastUpdate >= interval) {
+    lastUpdate = millis();  // Обновляем время последнего обновления
+    for (size_t i = 0; i < NUM_LEDS; ++i) {
+      leds[i] = customColorsArray[i];
+    }
+    FastLED.show();
+  }
+}
+
 void updateLEDState() {
   // Вызываем текущий режим на основе текущего времени
   if (ledState) {
@@ -239,6 +267,9 @@ void updateLEDState() {
         break;
       case 9:
         flagMode();
+        break;
+      case 10:
+        customMode();
         break;
       default:
         normalMode();  // Режим по умолчанию

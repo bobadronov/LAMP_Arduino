@@ -1,3 +1,4 @@
+#include <ArduinoJson.h>
 // Функция для перезапуска ESP
 void espRestart();
 // Функция для сохранения новых учетных данных WiFi
@@ -8,6 +9,7 @@ void sendCurrentStatus(AsyncWebSocket *server) {
   StaticJsonDocument<200> jsonDoc;
   // Добавляем данные о состоянии ленты и цвете
   jsonDoc["ledState"] = ledState;
+  jsonDoc["NUM_LEDS"] = NUM_LEDS;
   // Преобразуем цвет в HEX
   char hexColor[8];
   sprintf(hexColor, "#%02X%02X%02X", color.r, color.g, color.b);
@@ -18,6 +20,7 @@ void sendCurrentStatus(AsyncWebSocket *server) {
   jsonDoc["flagIsStatic"] = flagIsStatic;
   jsonDoc["flagSpeed"] = flagSpeed;
   jsonDoc["rainbowSpeed"] = rainbowSpeed;
+  jsonDoc["rainbowIsStatic"] = rainbowIsStatic;
   jsonDoc["timerIsActive"] = timerIsActive;
 
   JsonObject timerObj = jsonDoc.createNestedObject("timer");
@@ -34,7 +37,6 @@ void sendCurrentStatus(AsyncWebSocket *server) {
   // Отправляем JSON клиенту
   server->textAll(jsonString);
 }
-
 // Обработка обновления времени
 void handleTimeUpdate(String timeData) {
   DynamicJsonDocument doc(1024);  // Создаем документ для парсинга JSON
@@ -45,11 +47,11 @@ void handleTimeUpdate(String timeData) {
     Serial.println("Ошибка парсинга JSON: " + String(error.c_str()));
     return;
   }
-    // Извлечение данных из JSON с безопасными значениями по умолчанию
-  uint8_t hour = doc["hour"] | 0;  // Значение по умолчанию: 0 (часы)
+  // Извлечение данных из JSON с безопасными значениями по умолчанию
+  uint8_t hour = doc["hour"] | 0;      // Значение по умолчанию: 0 (часы)
   uint8_t minute = doc["minute"] | 0;  // Значение по умолчанию: 0 (минуты)
-  uint8_t day = doc["day"] | 1;  // Значение по умолчанию: 1 (день)
-  uint8_t month = doc["month"] | 1;  // Значение по умолчанию: 1 (месяц)
+  uint8_t day = doc["day"] | 1;        // Значение по умолчанию: 1 (день)
+  uint8_t month = doc["month"] | 1;    // Значение по умолчанию: 1 (месяц)
   uint16_t year = doc["year"] | 2024;  // Значение по умолчанию: 2024 (год)
 
   // Проверка корректности извлеченных данных
@@ -69,7 +71,6 @@ void handleTimeUpdate(String timeData) {
     Serial.println("Некорректные данные времени");
   }
 }
-
 void onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
@@ -77,7 +78,7 @@ void onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     DynamicJsonDocument doc(1024);
     // Проверяем префиксы "wifi" и "setup"
     if (message.startsWith("WIFI:")) {
-      handleWiFiMessage(message.substring(4));
+      handleWiFiMessage(message.substring(5));
     } else if (message.startsWith("SETUP:")) {
       handleSetupMessage(message.substring(6));
     } else if (message.startsWith("TIME:")) {
@@ -103,15 +104,30 @@ void handleWiFiMessage(const String &jsonPart) {
       String ssid = doc["ssid"].as<String>();
       String password = doc["password"].as<String>();
       String deviceName = doc["deviceName"].as<String>();
-      // Serial.println("Received WiFi setup:");
-      // Serial.print("SSID: ");
-      // Serial.println(ssid);
-      // Serial.print("Password: ");
-      // Serial.println(password);
-      saveNewCreds(ssid, password, deviceName);
+      Serial.println("Received Setup:");
+      Serial.print("SSID: ");
+      Serial.println(ssid);
+      Serial.print("Password: ");
+      Serial.println(password);
+      Serial.print("Device Name: ");
+      Serial.println(deviceName);
+      saveNewCreds(ssid, password, deviceName);  // Функция для сохранения данных Wi-Fi
     }
+    // Обработка изменения количества светодиодов
+    // if (doc.containsKey("setLeds")) {
+    //   int newNumLEDs = doc["setLeds"].as<int>();  // Извлекаем количество светодиодов
+    //   if (newNumLEDs > 0 && newNumLEDs <= 300) {  // Ограничение до 300 светодиодов
+    //     NUM_LEDS = newNumLEDs;
+    //     preferences.putInt("NUM_LEDS", NUM_LEDS);  // Сохраняем количество в память
+    //     Serial.print("New number of LEDs: ");
+    //     Serial.println(NUM_LEDS);
+    //     ESP.restart();                                                    // Перезагрузка устройства, чтобы изменения вступили в силу
+    //   } else {
+    //     Serial.println("Invalid number of LEDs.");
+    //   }
+    // }
   } else {
-    Serial.println("Failed to parse WiFi JSON");
+    Serial.println("Failed to parse JSON");
   }
 }
 
@@ -159,6 +175,25 @@ void parseCommonFields(const DynamicJsonDocument &doc) {
     rainbowSpeed = doc["rainbowSpeed"].as<float>();
     // Serial.print("Flag speed set to: ");
     // Serial.println(flagSpeed);
+  }
+  if (doc.containsKey("rainbowIsStatic")) {
+    rainbowIsStatic = doc["rainbowIsStatic"].as<bool>();
+  }
+  if (doc.containsKey("customColors")) {
+    JsonArrayConst customColors = doc["customColors"].as<JsonArrayConst>();
+    size_t numColors = customColors.size();  // Количество цветов в массиве
+    if (numColors > 0) {
+      // Заполняем массив savedColors
+      for (size_t i = 0; i < numColors && i < NUM_LEDS; ++i) {
+        String colorHex = customColors[i].as<String>();                                                 // Преобразуем каждый элемент в строку
+        long newColor = strtol(colorHex.c_str() + 1, NULL, 16);                                         // Пропускаем '#', преобразуем в число
+        customColorsArray[i] = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Преобразуем в CRGB
+      }
+      // Если цветов меньше, чем светодиодов, обнуляем оставшиеся
+      for (size_t i = numColors; i < NUM_LEDS; ++i) {
+        customColorsArray[i] = CRGB::Black;  // Обнуляем цвет
+      }
+    }
   }
 }
 

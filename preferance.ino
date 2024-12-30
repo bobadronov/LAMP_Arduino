@@ -1,14 +1,16 @@
 
 void saveNewCreds(const String &ssid, const String &password, const String &deviceName) {
-  preferences.begin("wifi", false);  // Открываем пространство "wifi" для записи
-  preferences.putString("ssid", ssid);  // Сохраняем SSID
+  preferences.begin("wifi", false);             // Открываем пространство "wifi" для записи
+  preferences.putString("ssid", ssid);          // Сохраняем SSID
   preferences.putString("password", password);  // Сохраняем пароль
   preferences.putString("deviceName", deviceName);
-  // Serial.println("New WiFi credentials saved:");
-  // Serial.print("SSID: ");
-  // Serial.println(ssid);
-  // Serial.print("Password: ");
-  // Serial.println(password);
+  Serial.println("New WiFi credentials saved:");
+  Serial.print("SSID: ");
+  Serial.println(ssid);
+  Serial.print("Password: ");
+  Serial.println(password);
+  Serial.print("Device name: ");
+  Serial.println(deviceName);
   preferences.end();  // Закрываем хранилище
 }
 

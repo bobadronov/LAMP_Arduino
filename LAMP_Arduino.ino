@@ -12,7 +12,7 @@
       GyverNTP
 */
 
-const char *VERSION = "0.0.3";
+const char *VERSION = "0.0.4";
 
 #include <ArduinoJson.h>
 #include <FastLED.h>
@@ -52,16 +52,19 @@ const char *modeList[] = {
   "FIRE",            // Эффект огня
   "COLOR_WIPE",      // Заливка цвета
   "METEOR",          // Эффект метеора
-  "FLAG OF UKRAINE"
+  "FLAG OF UKRAINE",
+  "CUSTOM LIGHTING"
 };
 
 const uint8_t NUM_MODES = sizeof(modeList) / sizeof(modeList[0]);  // Total number of modes
 
 #define DATA_PIN 12
-#define NUM_LEDS 5
 #define MAX_BRIGHTNESS 220
+const uint16_t NUM_LEDS = 10;
 CRGB leds[NUM_LEDS];
 CRGB color = CRGB::White;
+CRGB customColorsArray[NUM_LEDS];  // Массив для хранения всех цветов светодиодов
+
 // Переменная состояния ленты
 bool ledState = false;
 // Flag
@@ -69,11 +72,12 @@ bool flagIsStatic = true;
 uint8_t flagSpeed = 1;
 // Rasinbow
 float rainbowSpeed = 2;
+bool rainbowIsStatic= false;
 // Переменные температуры и влажности
 float temperature = 0.0;
 float humidity = 0.0;
 // Переменная текущего режима работы ленты
-uint8_t currentMode = 0;
+uint8_t currentMode = 1;
 // timer
 GyverDS3231 ds;
 uint8_t timerHour = 0;
@@ -101,7 +105,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 void setupNetwork();
 // Timer
 void checkTimer(AsyncWebSocket *server);
-
+void checkUpdate();
 void setup() {
   setStampZone(2);
   Serial.setTxBufferSize(1024);
@@ -110,6 +114,15 @@ void setup() {
   // Wait for the Serial object to become available.
   while (!Serial)
     ;
+
+  // preferences.begin("led_settings", false);
+
+  // Проверка, есть ли сохраненные данные
+  // if (preferences.isKey("NUM_LEDS")) {
+  //   NUM_LEDS = preferences.getInt("NUM_LEDS", DEFAULT_NUM_LEDS);
+  //   Serial.print("Loaded numLEDs from memory: ");
+  //   Serial.println(NUM_LEDS);
+  // }
   // Настройка светодиодной ленты
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(MAX_BRIGHTNESS);
@@ -132,16 +145,9 @@ void setup() {
   Wire.begin();
 
   if (!ds.begin()) ds.setBuildTime();
-  String ver, notes;
-  if (ota.checkUpdate(&ver, &notes)) {
-    Serial.println(ver);
-    Serial.println(notes);
-    ota.update();
-  }
+  // checkUpdate();
   Serial.println("\nSetup completed!");
   Serial.println();
-  Serial.print("Version ");
-  Serial.println(ota.version());
 }
 
 void loop() {

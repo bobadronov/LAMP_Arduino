@@ -34,3 +34,14 @@ void checkTimer(AsyncWebSocket *server) {
     }
   }
 }
+
+void checkUpdate(){
+  String ver, notes;
+  if (ota.checkUpdate(&ver, &notes)) {
+    Serial.println(ver);
+    Serial.println(notes);
+    ota.update();
+  }
+  Serial.print("Version ");
+  Serial.println(ota.version());
+}
