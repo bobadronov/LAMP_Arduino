@@ -72,10 +72,9 @@ const char index_html[] PROGMEM = R"=====(
           </div>
       </body>
       </html>
-    )====="
-;
+    )=====";
 
-// const char control_html[] PROGMEM = R"=====( 
+// const char control_html[] PROGMEM = R"=====(
 //   <!DOCTYPE html>
 //   <html>
 //   <head>
@@ -173,7 +172,7 @@ void startCaptivePortal() {
   dnsServer.setTTL(3600);
   dnsServer.start(53, "*", localIP);
   dnsServerStarted = true;
-  
+
   // Set up web server
   server.on("/", HTTP_ANY, [](AsyncWebServerRequest *request) {
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", index_html);

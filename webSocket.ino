@@ -8,8 +8,10 @@ void sendCurrentStatus(AsyncWebSocket *server) {
   // Создаем JSON объект
   StaticJsonDocument<200> jsonDoc;
   // Добавляем данные о состоянии ленты и цвете
+  jsonDoc["version"] = VERSION;
   jsonDoc["ledState"] = ledState;
   jsonDoc["NUM_LEDS"] = NUM_LEDS;
+  jsonDoc["commonBrightness"] = commonBrightness;
   // Преобразуем цвет в HEX
   char hexColor[8];
   sprintf(hexColor, "#%02X%02X%02X", color.r, color.g, color.b);
@@ -94,7 +96,6 @@ void onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
   }
 }
-
 // Обработка WiFi-сообщений
 void handleWiFiMessage(const String &jsonPart) {
   DynamicJsonDocument doc(1024);
@@ -130,7 +131,6 @@ void handleWiFiMessage(const String &jsonPart) {
     Serial.println("Failed to parse JSON");
   }
 }
-
 // Обработка setup-сообщений
 void handleSetupMessage(const String &jsonPart) {
   DynamicJsonDocument doc(1024);
@@ -141,7 +141,6 @@ void handleSetupMessage(const String &jsonPart) {
     Serial.println("Failed to parse setup JSON");
   }
 }
-
 // Универсальная функция для обработки общих полей
 void parseCommonFields(const DynamicJsonDocument &doc) {
   if (doc.containsKey("ledState")) {
@@ -163,13 +162,14 @@ void parseCommonFields(const DynamicJsonDocument &doc) {
     // Serial.println(mode);
     currentMode = mode;
   }
+  if (doc.containsKey("commonBrightness")) {
+    commonBrightness = doc["commonBrightness"].as<uint8_t>();
+  }
   if (doc.containsKey("flagIsStatic")) {
     flagIsStatic = doc["flagIsStatic"].as<bool>();
   }
   if (doc.containsKey("flagSpeed")) {
     flagSpeed = doc["flagSpeed"].as<uint8_t>();
-    // Serial.print("Flag speed set to: ");
-    // Serial.println(flagSpeed);
   }
   if (doc.containsKey("rainbowSpeed")) {
     rainbowSpeed = doc["rainbowSpeed"].as<float>();
@@ -196,7 +196,6 @@ void parseCommonFields(const DynamicJsonDocument &doc) {
     }
   }
 }
-
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
   if (type == WS_EVT_CONNECT) {
     Serial.printf("Client connected: %u\n", client->id());

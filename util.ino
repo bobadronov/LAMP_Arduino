@@ -8,7 +8,7 @@ void espRestart() {
 
 void checkTimer(AsyncWebSocket *server) {
   if (timerIsActive) {
-     Serial.print("getStampZone: ");
+    Serial.print("getStampZone: ");
     Serial.println(getStampZone());
     if (ds.tick()) {
       // Получаем текущую дату и время с DS3231
@@ -35,7 +35,7 @@ void checkTimer(AsyncWebSocket *server) {
   }
 }
 
-void checkUpdate(){
+void checkUpdate() {
   String ver, notes;
   if (ota.checkUpdate(&ver, &notes)) {
     Serial.println(ver);

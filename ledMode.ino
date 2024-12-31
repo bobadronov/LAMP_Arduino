@@ -1,4 +1,5 @@
 void normalMode() {
+  FastLED.setBrightness(255);
   static unsigned long lastUpdate = 0;
   if (millis() - lastUpdate >= 500) {
     lastUpdate = millis();
@@ -10,7 +11,8 @@ void normalMode() {
 void rainbowMode() {
   static uint8_t hue = 0;
   static unsigned long lastUpdate = 0;
-  if (millis() - lastUpdate >= 3 * rainbowSpeed) {
+  FastLED.setBrightness(commonBrightness);
+  if (millis() - lastUpdate >= 5 * rainbowSpeed) {
     lastUpdate = millis();
     if (rainbowIsStatic) {
       fill_solid(leds, NUM_LEDS, CHSV(hue, 255, 255));
@@ -29,7 +31,7 @@ void breathingMode() {
   static int direction = 1;  // 1 для увеличения, -1 для уменьшения
   static unsigned long lastUpdate = 0;
   const unsigned long interval = 30;  // Интервал обновления яркости
-
+  FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     brightness += direction * 5;  // Шаг изменения яркости
@@ -52,7 +54,7 @@ void strobeMode() {
   static bool on = true;
   static unsigned long lastUpdate = 0;
   const unsigned long interval = 200;  // Интервал переключения состояния
-
+  FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     if (on) {
@@ -69,7 +71,7 @@ void meteorMode() {
   static unsigned long lastUpdate = 0;
   const unsigned long interval = 200;  // Интервал обновления
   static int pos = 0;
-
+  FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     fadeToBlackBy(leds, NUM_LEDS, 64);  // Постепенное затухание следов
@@ -86,7 +88,7 @@ void colorWipeMode() {
   const unsigned long interval = 100;  // Интервал обновления
   static int index = 0;
   static int direction = 1;  // Направление (1 - вправо, -1 - влево)
-
+  FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
 
@@ -113,7 +115,7 @@ void fireMode() {
   static byte heat[NUM_LEDS];           // Массив для хранения тепла для каждого светодиода
   static unsigned long lastUpdate = 0;  // Время последнего обновления
   const unsigned long interval = 30;    // Интервал обновления (в миллисекундах)
-
+  FastLED.setBrightness(commonBrightness);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();  // Обновляем время последнего обновления
 
@@ -141,14 +143,6 @@ void fireMode() {
       CRGB color = HeatColor(heat[i]);    // Преобразуем температуру в цвет
       leds[i] = color.fadeToBlackBy(50);  // Плавное затемнение
     }
-
-    // Дополнительный эффект мерцания
-    int flickerCount = random(5, 15);  // Увеличиваем количество мерцаний
-    for (int i = 0; i < flickerCount; i++) {
-      int flickerPos = random(NUM_LEDS);  // Выбираем случайную позицию на всей ленте
-      leds[flickerPos] = CRGB::White;     // Вспышки белого цвета
-    }
-
     FastLED.show();  // Отображаем результат на светодиодах
   }
 }
@@ -158,16 +152,14 @@ void runningLightsMode() {
   const unsigned long interval = 50;  // Інтервал оновлення (мс)
   static float position = 0;          // Поточна позиція хвилі
   const float speed = 0.5;            // Швидкість руху хвилі
-  const uint8_t brightness = 255;     // Максимальна яскравість хвилі
-
+  FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     position += speed;  // Рух хвилі
-
     for (int i = 0; i < NUM_LEDS; i++) {
       // Формула хвилі: синусоїда для плавного ефекту
       float wave = sin((i + position) * 0.2) * 0.5 + 0.5;  // Значення від 0 до 1
-      uint8_t intensity = wave * brightness;               // Інтенсивність кольору
+      uint8_t intensity = wave * 255;                      // Інтенсивність кольору
 
       leds[i] = color;                         // Базовий колір
       leds[i].fadeToBlackBy(255 - intensity);  // Застосовуємо яскравість хвилі
@@ -180,6 +172,7 @@ void runningLightsMode() {
 void sparkleMode() {
   static unsigned long lastUpdate = 0;
   const unsigned long interval = 100;  // Интервал обновления
+  FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     fadeToBlackBy(leds, NUM_LEDS, 60);  // Постепенно затухают остальные светодиоды
@@ -192,6 +185,7 @@ void sparkleMode() {
 void flagMode() {
   static unsigned long lastUpdate = 0;
   const unsigned long interval = 50;  // Интервал обновления
+  FastLED.setBrightness(commonBrightness);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();  // Обновляем время последнего обновления
 
@@ -225,6 +219,7 @@ void flagMode() {
 void customMode() {
   static unsigned long lastUpdate = 0;
   const unsigned long interval = 50;  // Интервал обновления
+  FastLED.setBrightness(commonBrightness);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();  // Обновляем время последнего обновления
     for (size_t i = 0; i < NUM_LEDS; ++i) {
