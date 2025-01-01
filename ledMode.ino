@@ -3,7 +3,7 @@ void normalMode() {
   static unsigned long lastUpdate = 0;
   if (millis() - lastUpdate >= 500) {
     lastUpdate = millis();
-    fill_solid(leds, NUM_LEDS, color);  // Включить выбранный цвет
+    fill_solid(leds, REAL_NUM_LEDS, color);  // Включить выбранный цвет
     FastLED.show();
   }
 }
@@ -15,9 +15,9 @@ void rainbowMode() {
   if (millis() - lastUpdate >= 5 * rainbowSpeed) {
     lastUpdate = millis();
     if (rainbowIsStatic) {
-      fill_solid(leds, NUM_LEDS, CHSV(hue, 255, 255));
+      fill_solid(leds, REAL_NUM_LEDS, CHSV(hue, 255, 255));
     } else {
-      for (int i = 0; i < NUM_LEDS; i++) {
+      for (int i = 0; i < REAL_NUM_LEDS; i++) {
         leds[i] = CHSV(hue + (i * 10), 255, 255);
       }
     }
@@ -43,7 +43,7 @@ void breathingMode() {
     // Преобразование цвета из RGB в HSV
     CHSV hsvColor = rgb2hsv_approximate(color);
 
-    for (int i = 0; i < NUM_LEDS; i++) {
+    for (int i = 0; i < REAL_NUM_LEDS; i++) {
       leds[i] = CHSV(hsvColor.h, hsvColor.s, brightness);
     }
     FastLED.show();
@@ -58,9 +58,9 @@ void strobeMode() {
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     if (on) {
-      fill_solid(leds, NUM_LEDS, color);
+      fill_solid(leds, REAL_NUM_LEDS, color);
     } else {
-      fill_solid(leds, NUM_LEDS, CRGB::Black);  // Выключить светодиоды
+      fill_solid(leds, REAL_NUM_LEDS, CRGB::Black);  // Выключить светодиоды
     }
     FastLED.show();
     on = !on;  // Переключить состояние
@@ -74,11 +74,10 @@ void meteorMode() {
   FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
-    fadeToBlackBy(leds, NUM_LEDS, 64);  // Постепенное затухание следов
-
+    fadeToBlackBy(leds, REAL_NUM_LEDS, 64);  // Постепенное затухание следов
     leds[pos] = color;  // Основное тело метеора
     pos++;
-    if (pos >= NUM_LEDS) pos = 0;  // Возврат к началу
+    if (pos >= REAL_NUM_LEDS) pos = 0;  // Возврат к началу
     FastLED.show();
   }
 }
@@ -91,55 +90,55 @@ void colorWipeMode() {
   FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
-
     // Очистить предыдущий светодиод
     leds[index] = CRGB::Black;
-
     // Обновить индекс в зависимости от направления
     index += direction;
-
     // Если дошли до конца или в начало, меняем направление
-    if (index >= NUM_LEDS || index < 0) {
+    if (index >= REAL_NUM_LEDS || index < 0) {
       direction = -direction;  // Меняем направление
       index += direction;      // Корректируем индекс, чтобы не выйти за пределы
     }
-
     // Заливаем новый светодиод
     leds[index] = color;
-
     FastLED.show();
   }
 }
 
 void fireMode() {
-  static byte heat[NUM_LEDS];           // Массив для хранения тепла для каждого светодиода
-  static unsigned long lastUpdate = 0;  // Время последнего обновления
-  const unsigned long interval = 30;    // Интервал обновления (в миллисекундах)
+  static byte* heat = nullptr;              // Указатель на массив тепла
+  static unsigned long lastUpdate = 0;      // Время последнего обновления
+  const unsigned long interval = 30;        // Интервал обновления (в миллисекундах)
+  // Проверяем, нужно ли переинициализировать массив
+  static uint16_t previousLedCount = 0;
+  if (REAL_NUM_LEDS != previousLedCount) {
+    if (heat != nullptr) {
+      delete[] heat;  // Освобождаем старую память
+    }
+    heat = new byte[REAL_NUM_LEDS];  // Выделяем новый массив
+    memset(heat, 0, REAL_NUM_LEDS);  // Инициализируем нулями
+    previousLedCount = REAL_NUM_LEDS;
+  }
   FastLED.setBrightness(commonBrightness);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();  // Обновляем время последнего обновления
-
     // "Охлаждение" светодиодов
-    for (int i = 0; i < NUM_LEDS; i++) {
+    for (int i = 0; i < REAL_NUM_LEDS; i++) {
       heat[i] = qsub8(heat[i], random(10, 30));  // Более агрессивное охлаждение
     }
-
     // "Нагрев" центра и случайных позиций
     int centerHeat = random(150, 255);  // Высокое тепло в центре
-    heat[NUM_LEDS / 2] = qadd8(heat[NUM_LEDS / 2], centerHeat);
-
-    for (int i = 0; i < NUM_LEDS / 8; i++) {
-      int pos = random(NUM_LEDS);
+    heat[REAL_NUM_LEDS / 2] = qadd8(heat[REAL_NUM_LEDS / 2], centerHeat);
+    for (int i = 0; i < REAL_NUM_LEDS / 8; i++) {
+      int pos = random(REAL_NUM_LEDS);
       heat[pos] = qadd8(heat[pos], random(120, 200));  // Локальный нагрев
     }
-
     // Распространение тепла с уменьшением интенсивности
-    for (int i = 1; i < NUM_LEDS - 1; i++) {
+    for (int i = 1; i < REAL_NUM_LEDS - 1; i++) {
       heat[i] = (heat[i - 1] + heat[i] + heat[i + 1]) / 3;  // Учитываем соседей
     }
-
     // Преобразование тепла в цвета с эффектом затемнения
-    for (int i = 0; i < NUM_LEDS; i++) {
+    for (int i = 0; i < REAL_NUM_LEDS; i++) {
       CRGB color = HeatColor(heat[i]);    // Преобразуем температуру в цвет
       leds[i] = color.fadeToBlackBy(50);  // Плавное затемнение
     }
@@ -156,7 +155,7 @@ void runningLightsMode() {
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     position += speed;  // Рух хвилі
-    for (int i = 0; i < NUM_LEDS; i++) {
+    for (int i = 0; i < REAL_NUM_LEDS; i++) {
       // Формула хвилі: синусоїда для плавного ефекту
       float wave = sin((i + position) * 0.2) * 0.5 + 0.5;  // Значення від 0 до 1
       uint8_t intensity = wave * 255;                      // Інтенсивність кольору
@@ -175,8 +174,8 @@ void sparkleMode() {
   FastLED.setBrightness(255);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
-    fadeToBlackBy(leds, NUM_LEDS, 60);  // Постепенно затухают остальные светодиоды
-    int pos = random(NUM_LEDS);         // Случайная позиция
+    fadeToBlackBy(leds, REAL_NUM_LEDS, 60);  // Постепенно затухают остальные светодиоды
+    int pos = random(REAL_NUM_LEDS);         // Случайная позиция
     leds[pos] = color;                  // Яркая белая вспышка
     FastLED.show();
   }
@@ -191,20 +190,20 @@ void flagMode() {
 
     if (flagIsStatic) {
       // Верхняя половина синий, нижняя желтая
-      for (int i = 0; i < NUM_LEDS / 2; i++) {
+      for (int i = 0; i < REAL_NUM_LEDS / 2; i++) {
         leds[i] = CRGB::Blue;
       }
-      for (int i = NUM_LEDS / 2; i < NUM_LEDS; i++) {
+      for (int i = REAL_NUM_LEDS / 2; i < REAL_NUM_LEDS; i++) {
         leds[i] = CRGB::Yellow;
       }
       FastLED.show();
     } else {
       // Динамический флаг с эффектом волны
       static uint8_t offset = 0;  // Смещение волны
-      for (int i = 0; i < NUM_LEDS; i++) {
+      for (int i = 0; i < REAL_NUM_LEDS; i++) {
         // Рассчитываем волновую амплитуду
         uint8_t wave = sin8(i * 10 + offset);  // sin8 создает синусоидальную волну
-        if (i < NUM_LEDS / 2) {
+        if (i < REAL_NUM_LEDS / 2) {
           leds[i] = CHSV(160, 255, wave);  // Верхняя половина - синий
         } else {
           leds[i] = CHSV(40, 255, wave);  // Нижняя половина - желтый
@@ -222,7 +221,7 @@ void customMode() {
   FastLED.setBrightness(commonBrightness);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();  // Обновляем время последнего обновления
-    for (size_t i = 0; i < NUM_LEDS; ++i) {
+    for (size_t i = 0; i < REAL_NUM_LEDS; ++i) {
       leds[i] = customColorsArray[i];
     }
     FastLED.show();
@@ -271,7 +270,7 @@ void updateLEDState() {
         break;
     }
   } else {
-    fadeToBlackBy(leds, NUM_LEDS, 2);  // Постепенно выключить ленту
+    fadeToBlackBy(leds, REAL_NUM_LEDS, 2);  // Постепенно выключить ленту
     FastLED.show();
   }
 }

@@ -3,14 +3,14 @@
 void espRestart();
 // Функция для сохранения новых учетных данных WiFi
 void saveNewCreds(const String &ssid, const String &password, const String &deviceName);
-
+void saveRealLedCount(uint16_t ledCount);
 void sendCurrentStatus(AsyncWebSocket *server) {
   // Создаем JSON объект
   StaticJsonDocument<200> jsonDoc;
   // Добавляем данные о состоянии ленты и цвете
   jsonDoc["version"] = VERSION;
   jsonDoc["ledState"] = ledState;
-  jsonDoc["NUM_LEDS"] = NUM_LEDS;
+  jsonDoc["REAL_NUM_LEDS"] = REAL_NUM_LEDS;
   jsonDoc["commonBrightness"] = commonBrightness;
   // Преобразуем цвет в HEX
   char hexColor[8];
@@ -42,7 +42,6 @@ void sendCurrentStatus(AsyncWebSocket *server) {
 // Обработка обновления времени
 void handleTimeUpdate(String timeData) {
   DynamicJsonDocument doc(1024);  // Создаем документ для парсинга JSON
-
   // Попробуем разобрать строку как JSON
   DeserializationError error = deserializeJson(doc, timeData);
   if (error) {
@@ -55,7 +54,6 @@ void handleTimeUpdate(String timeData) {
   uint8_t day = doc["day"] | 1;        // Значение по умолчанию: 1 (день)
   uint8_t month = doc["month"] | 1;    // Значение по умолчанию: 1 (месяц)
   uint16_t year = doc["year"] | 2024;  // Значение по умолчанию: 2024 (год)
-
   // Проверка корректности извлеченных данных
   if (hour < 24 && minute < 60) {
     // Если данные времени корректны
@@ -71,29 +69,6 @@ void handleTimeUpdate(String timeData) {
     // Serial.println("Дата: " + String(day) + "/" + String(month) + "/" + String(year));
   } else {
     Serial.println("Некорректные данные времени");
-  }
-}
-void onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
-  AwsFrameInfo *info = (AwsFrameInfo *)arg;
-  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
-    String message = String((char *)data, len);  // Преобразуем данные в строку
-    DynamicJsonDocument doc(1024);
-    // Проверяем префиксы "wifi" и "setup"
-    if (message.startsWith("WIFI:")) {
-      handleWiFiMessage(message.substring(5));
-    } else if (message.startsWith("SETUP:")) {
-      handleSetupMessage(message.substring(6));
-    } else if (message.startsWith("TIME:")) {
-      handleTimeUpdate(message.substring(5));  // Передаем данные о времени
-    } else if (message.startsWith("CANCEL_TIMER")) {
-      timerHour = 0;
-      timerMinute = 0;
-      timerIsActive = false;  // Устанавливаем флаг активности таймера
-      // Serial.println("CANCEL_TIMER");
-    } else {
-      Serial.println("Unknown message format");
-      Serial.println(message);
-    }
   }
 }
 // Обработка WiFi-сообщений
@@ -136,63 +111,91 @@ void handleSetupMessage(const String &jsonPart) {
   DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, jsonPart);
   if (!error) {
-    parseCommonFields(doc);
+    if (doc.containsKey("ledState")) {
+      ledState = doc["ledState"].as<bool>();
+      // Serial.print("ledState: ");
+      // Serial.println(ledState);
+    }
+    if (doc.containsKey("color")) {
+      String colorHex = doc["color"].as<String>();
+      // Serial.print("Color: ");
+      // Serial.println(colorHex);
+      // Преобразование цвета из HEX в RGB
+      long newColor = strtol(colorHex.c_str() + 1, NULL, 16);  // Пропускаем '#'
+      color = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);
+    }
+    if (doc.containsKey("currentMode")) {
+      uint8_t mode = doc["currentMode"].as<uint8_t>();
+      // Serial.print("CurrentMode: ");
+      // Serial.println(mode);
+      currentMode = mode;
+    }
+    if (doc.containsKey("commonBrightness")) {
+      commonBrightness = doc["commonBrightness"].as<uint8_t>();
+    }
+    if (doc.containsKey("flagIsStatic")) {
+      flagIsStatic = doc["flagIsStatic"].as<bool>();
+    }
+    if (doc.containsKey("flagSpeed")) {
+      flagSpeed = doc["flagSpeed"].as<uint8_t>();
+    }
+    if (doc.containsKey("rainbowSpeed")) {
+      rainbowSpeed = doc["rainbowSpeed"].as<float>();
+      // Serial.print("Flag speed set to: ");
+      // Serial.println(flagSpeed);
+    }
+    if (doc.containsKey("rainbowIsStatic")) {
+      rainbowIsStatic = doc["rainbowIsStatic"].as<bool>();
+    }
+    if (doc.containsKey("customColors")) {
+      JsonArrayConst customColors = doc["customColors"].as<JsonArrayConst>();
+      size_t numColors = customColors.size();  // Количество цветов в массиве
+      if (numColors > 0) {
+        // Заполняем массив savedColors
+        for (size_t i = 0; i < numColors && i < REAL_NUM_LEDS; ++i) {
+          String colorHex = customColors[i].as<String>();                                                 // Преобразуем каждый элемент в строку
+          long newColor = strtol(colorHex.c_str() + 1, NULL, 16);                                         // Пропускаем '#', преобразуем в число
+          customColorsArray[i] = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Преобразуем в CRGB
+        }
+        // Если цветов меньше, чем светодиодов, обнуляем оставшиеся
+        for (size_t i = numColors; i < REAL_NUM_LEDS; ++i) {
+          customColorsArray[i] = CRGB::Black;  // Обнуляем цвет
+        }
+      }
+    }
+    if (doc.containsKey("REAL_NUM_LEDS")) {
+      REAL_NUM_LEDS = doc["REAL_NUM_LEDS"].as<uint16_t>();
+      Serial.print("Led count: ");
+      Serial.println(REAL_NUM_LEDS);
+      saveRealLedCount(REAL_NUM_LEDS);
+      espRestart();
+    }
   } else {
     Serial.println("Failed to parse setup JSON");
   }
 }
-// Универсальная функция для обработки общих полей
-void parseCommonFields(const DynamicJsonDocument &doc) {
-  if (doc.containsKey("ledState")) {
-    ledState = doc["ledState"].as<bool>();
-    // Serial.print("ledState: ");
-    // Serial.println(ledState);
-  }
-  if (doc.containsKey("color")) {
-    String colorHex = doc["color"].as<String>();
-    // Serial.print("Color: ");
-    // Serial.println(colorHex);
-    // Преобразование цвета из HEX в RGB
-    long newColor = strtol(colorHex.c_str() + 1, NULL, 16);  // Пропускаем '#'
-    color = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);
-  }
-  if (doc.containsKey("currentMode")) {
-    uint8_t mode = doc["currentMode"].as<uint8_t>();
-    // Serial.print("CurrentMode: ");
-    // Serial.println(mode);
-    currentMode = mode;
-  }
-  if (doc.containsKey("commonBrightness")) {
-    commonBrightness = doc["commonBrightness"].as<uint8_t>();
-  }
-  if (doc.containsKey("flagIsStatic")) {
-    flagIsStatic = doc["flagIsStatic"].as<bool>();
-  }
-  if (doc.containsKey("flagSpeed")) {
-    flagSpeed = doc["flagSpeed"].as<uint8_t>();
-  }
-  if (doc.containsKey("rainbowSpeed")) {
-    rainbowSpeed = doc["rainbowSpeed"].as<float>();
-    // Serial.print("Flag speed set to: ");
-    // Serial.println(flagSpeed);
-  }
-  if (doc.containsKey("rainbowIsStatic")) {
-    rainbowIsStatic = doc["rainbowIsStatic"].as<bool>();
-  }
-  if (doc.containsKey("customColors")) {
-    JsonArrayConst customColors = doc["customColors"].as<JsonArrayConst>();
-    size_t numColors = customColors.size();  // Количество цветов в массиве
-    if (numColors > 0) {
-      // Заполняем массив savedColors
-      for (size_t i = 0; i < numColors && i < NUM_LEDS; ++i) {
-        String colorHex = customColors[i].as<String>();                                                 // Преобразуем каждый элемент в строку
-        long newColor = strtol(colorHex.c_str() + 1, NULL, 16);                                         // Пропускаем '#', преобразуем в число
-        customColorsArray[i] = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Преобразуем в CRGB
-      }
-      // Если цветов меньше, чем светодиодов, обнуляем оставшиеся
-      for (size_t i = numColors; i < NUM_LEDS; ++i) {
-        customColorsArray[i] = CRGB::Black;  // Обнуляем цвет
-      }
+void onWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    String message = String((char *)data, len);  // Преобразуем данные в строку
+    DynamicJsonDocument doc(1024);
+    // Проверяем префиксы "wifi" и "setup"
+    if (message.startsWith("WIFI:")) {
+      handleWiFiMessage(message.substring(5));
+    } else if (message.startsWith("SETUP:")) {
+      handleSetupMessage(message.substring(6));
+    } else if (message.startsWith("TIME:")) {
+      handleTimeUpdate(message.substring(5));  // Передаем данные о времени
+    } else if (message.startsWith("CANCEL_TIMER")) {
+      timerHour = 0;
+      timerMinute = 0;
+      timerIsActive = false;  // Устанавливаем флаг активности таймера
+      // Serial.println("CANCEL_TIMER");
+    } else if (message.startsWith("REBOOT")) {
+      espRestart();
+    } else {
+      Serial.println("Unknown message format");
+      Serial.println(message);
     }
   }
 }

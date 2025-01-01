@@ -3,11 +3,12 @@ const IPAddress localIP(4, 3, 2, 1);
 const IPAddress gatewayIP(4, 3, 2, 1);
 const IPAddress subnetMask(255, 255, 255, 0);
 const String localIPURL = "http://4.3.2.1";
+
 // Функция для получения текущих WiFi-учетных данных
 void getWifiCreds();
-
 void saveNewCreds(const String &ssid, const String &password, const String &deviceName);
 void espRestart();
+
 const char index_html[] PROGMEM = R"=====(
       <!DOCTYPE html>
       <html>
@@ -64,7 +65,7 @@ const char index_html[] PROGMEM = R"=====(
                   <label for="ssid">Wi-Fi SSID:</label><br>
                   <input type="text" id="ssid" name="ssid" placeholder="Enter SSID" required><br>
                   <label for="password">Wi-Fi Password:</label><br>
-                  <input type="password" id="password" name="password" placeholder="Enter Password"><br>
+                  <input type="password" id="password" name="password" placeholder="Enter Password" ><br>
                   <label for="deviceName">Device Name:</label><br>
                   <input type="text" id="deviceName" name="deviceName" placeholder="Enter Device Name" required><br>
                   <button type="submit">Save</button>
@@ -72,7 +73,8 @@ const char index_html[] PROGMEM = R"=====(
           </div>
       </body>
       </html>
-    )=====";
+    )====="
+;
 
 // const char control_html[] PROGMEM = R"=====(
 //   <!DOCTYPE html>
@@ -179,6 +181,74 @@ void startCaptivePortal() {
     response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     request->send(response);
   });
+  // Required
+  server.on("/connecttest.txt", [](AsyncWebServerRequest *request) {
+    request->redirect("http://logout.net");
+  });  // windows 11 captive portal workaround
+  server.on("/wpad.dat", [](AsyncWebServerRequest *request) {
+    request->send(404);
+  });  // Honestly don't understand what this is but a 404 stops win 10 keep calling this repeatedly and panicking the esp32 :)
+  server.on("/generate_204", [](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);
+  });  // android captive portal redirect
+  server.on("/redirect", [](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);
+  });  // microsoft redirect
+  server.on("/hotspot-detect.html", [](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);
+  });  // apple call home
+  server.on("/canonical.html", [](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);
+  });  // firefox captive portal call home
+  server.on("/success.txt", [](AsyncWebServerRequest *request) {
+    request->send(200);
+  });  // firefox captive portal call home
+  server.on("/ncsi.txt", [](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);
+  });  // windows call home
+  // B Tier (uncommon)
+  server.on("/chrome-variations/seed", [](AsyncWebServerRequest *request) {
+    request->send(200);
+  });  //chrome captive portal call home
+       //  server.on("/service/update2/json",[](AsyncWebServerRequest *request){request->send(200);}); //firefox?
+       //  server.on("/chat",[](AsyncWebServerRequest *request){request->send(404);}); //No stop asking Whatsapp, there is no internet connection
+  server.on("/startpage", [](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);
+  });
+  // return 404 to webpage icon
+  server.on("/favicon.ico", [](AsyncWebServerRequest *request) {
+    request->send(404);
+  });  // webpage icon
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);
+  });
+  // Serial.println("Captive Portal started.");
+  Serial.print("AP IP Address: ");
+  Serial.println(WiFi.softAPIP());
+}
+// Main network setup
+void setupNetwork() {
+  getWifiCreds();
+  WiFi.begin(SSID, PASSWORD);
+  unsigned long startAttemptTime = millis();
+  const unsigned long timeout = 10000;  // 10 seconds timeout
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < timeout) {
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(500);
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(500);
+    Serial.println("Connecting to WiFi...");
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    espInAPMode = true;
+    Serial.println("WiFi connection failed. Starting AP Mode...");
+    startCaptivePortal();
+  } else {
+    espInAPMode = false;
+    Serial.println("Connected to WiFi.");
+    Serial.print("IP Address: ");
+    Serial.println(WiFi.localIP());
+  }
 
   server.on("/wifi-config", HTTP_POST, [](AsyncWebServerRequest *request) {
     String ssid = "";
@@ -210,110 +280,29 @@ void startCaptivePortal() {
   server.on("/led-control", HTTP_POST, [](AsyncWebServerRequest *request) {
     int mode = -1;  // Неверное значение по умолчанию
     String newColor = "#FFFFFF";
-
     if (request->hasParam("mode", true)) {
       mode = request->getParam("mode", true)->value().toInt();
     }
-
     if (request->hasParam("color", true)) {
       newColor = request->getParam("color", true)->value();
     }
-
     // Валидация входных данных
     if (mode < 0 || mode > 9) {
       request->send(400, "text/plain", "Invalid mode value");
       return;
     }
-
     if (newColor[0] != '#' || newColor.length() != 7) {
       request->send(400, "text/plain", "Invalid color format");
       return;
     }
-
     // Лог для отладки
     Serial.println("Selected Mode Index: " + String(mode));
     Serial.println("Selected Color: " + newColor);
-
     // Применение настроек
     currentMode = mode;
     long hexColor = strtol(newColor.c_str() + 1, nullptr, 16);
     color = CRGB((hexColor >> 16) & 0xFF, (hexColor >> 8) & 0xFF, hexColor & 0xFF);
-
     // Ответ для клиента
     request->send(200, "text/html", "<h1>Settings Applied</h1>");
   });
-
-
-  // Required
-  server.on("/connecttest.txt", [](AsyncWebServerRequest *request) {
-    request->redirect("http://logout.net");
-  });  // windows 11 captive portal workaround
-  server.on("/wpad.dat", [](AsyncWebServerRequest *request) {
-    request->send(404);
-  });  // Honestly don't understand what this is but a 404 stops win 10 keep calling this repeatedly and panicking the esp32 :)
-  server.on("/generate_204", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // android captive portal redirect
-  server.on("/redirect", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // microsoft redirect
-  server.on("/hotspot-detect.html", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // apple call home
-  server.on("/canonical.html", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // firefox captive portal call home
-  server.on("/success.txt", [](AsyncWebServerRequest *request) {
-    request->send(200);
-  });  // firefox captive portal call home
-  server.on("/ncsi.txt", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // windows call home
-
-  // B Tier (uncommon)
-  server.on("/chrome-variations/seed", [](AsyncWebServerRequest *request) {
-    request->send(200);
-  });  //chrome captive portal call home
-       //  server.on("/service/update2/json",[](AsyncWebServerRequest *request){request->send(200);}); //firefox?
-       //  server.on("/chat",[](AsyncWebServerRequest *request){request->send(404);}); //No stop asking Whatsapp, there is no internet connection
-  server.on("/startpage", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });
-
-  // return 404 to webpage icon
-  server.on("/favicon.ico", [](AsyncWebServerRequest *request) {
-    request->send(404);
-  });  // webpage icon
-
-  server.onNotFound([](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });
-  // Serial.println("Captive Portal started.");
-  Serial.print("AP IP Address: ");
-  Serial.println(WiFi.softAPIP());
-}
-
-// Main network setup
-void setupNetwork() {
-  getWifiCreds();
-  WiFi.begin(SSID, PASSWORD);
-  unsigned long startAttemptTime = millis();
-  const unsigned long timeout = 10000;  // 10 seconds timeout
-
-  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < timeout) {
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(500);
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(500);
-    Serial.println("Connecting to WiFi...");
-  }
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi connection failed. Starting AP Mode...");
-    startCaptivePortal();
-  } else {
-    digitalWrite(LED_BUILTIN, HIGH);
-    Serial.println("Connected to WiFi.");
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
-  }
 }

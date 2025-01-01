@@ -8,16 +8,17 @@ void espRestart() {
 
 void checkTimer(AsyncWebSocket *server) {
   if (timerIsActive) {
-    Serial.print("getStampZone: ");
-    Serial.println(getStampZone());
+    // Serial.print("getStampZone: ");
+    // Serial.println(getStampZone());
     if (ds.tick()) {
       // Получаем текущую дату и время с DS3231
       uint8_t currentHour = ds.hour() - 2;
-      uint8_t currentMinute = ds.minute();
+      uint8_t currentMinute = ds.minute() + 2;
       uint8_t currentDay = ds.day();
       uint8_t currentMonth = ds.month();
       uint16_t currentYear = ds.year();
-      // Serial.println("Current Date and Time: " + String(currentDay) + "." + String(currentMonth) + "." + String(currentYear) + " " + String(currentHour) + ":" + String(currentMinute));
+      Serial.println("Set Date and Time: " + String(timerDay) + "." + String(timerMonth) + "." + String(timerYear) + " " + String(timerHour) + ":" + String(timerMinute));
+      Serial.println("Current Date and Time: " + String(currentDay) + "." + String(currentMonth) + "." + String(currentYear) + " " + String(currentHour) + ":" + String(currentMinute));
       // Проверяем, совпадает ли текущее время с установленным таймером
       if (timerHour == currentHour && timerMinute == currentMinute && timerDay == currentDay && timerMonth == currentMonth && timerYear == currentYear) {
         // Отключаем таймер и сбрасываем состояние
@@ -44,4 +45,21 @@ void checkUpdate() {
   }
   Serial.print("Version ");
   Serial.println(ota.version());
+}
+
+void espConectionStatusIndicator() {
+  static unsigned long lastUpdate = 0;
+  const unsigned long interval = 2000;  // Інтервал оновлення
+  static bool state = false;  // Стан світлодіода
+  if (millis() - lastUpdate >= interval) {
+    lastUpdate = millis();
+    if (espInAPMode) {
+      // Блимання
+      state = !state;  // Перемикаємо стан
+      digitalWrite(LED_BUILTIN, state ? LOW : HIGH);  // Світлодіод активується низьким рівнем
+    } else {
+      // Постійне ввімкнення
+      digitalWrite(LED_BUILTIN, HIGH);  // Світлодіод ввімкнений
+    }
+  }
 }
