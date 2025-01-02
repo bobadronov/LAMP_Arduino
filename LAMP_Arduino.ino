@@ -11,7 +11,11 @@
       Encoder management
       GyverNTP
 */
-
+uint8_t gmt = 2;
+const String ntpUrl = "0.ua.pool.ntp.org";
+// #define DS3231_MODULE_ENABLE
+// #define DTH_ENABLE // comment out if not enabled
+// #define OTA_ENABLE // comment out if not enabled
 // ======================= Constants and Libraries =======================
 #include <ArduinoJson.h>
 #include <FastLED.h>
@@ -44,29 +48,29 @@ String HOSTNAME = "ESP32-LED";
 bool espInAPMode = false;
 
 // LED Settings
-#define NUM_LEDS 600
+#define NUM_LEDS 1800
 uint16_t REAL_NUM_LEDS = 5;
 CRGB leds[NUM_LEDS];
 CRGB color = CRGB::White;
 CRGB customColorsArray[NUM_LEDS];
+CRGB customGradient[2];
 uint8_t commonBrightness = 255;
 bool ledState = false;
 bool flagIsStatic = true;
 uint8_t flagSpeed = 1;
 float rainbowSpeed = 2;
 bool rainbowIsStatic = false;
-
+float breathingSpeed = 100;
 // Temperature and Humidity
 float temperature = 0.0;
 float humidity = 0.0;
 DHT dht(DHT_PIN, DHT_TYPE);
-
 // Modes
 const char *modeList[] = {
-  "STATIC_COLOR",
+  "STATIC COLOR",
   "RAINBOW",
   "BREATHING",
-  "STROBE",
+  "GRADIENT FILL",
   "SPARKLE",
   "RUNNING LIGHTS",
   "FIRE",
@@ -80,8 +84,8 @@ uint8_t currentMode = 6;
 
 // Timer
 GyverDS3231 ds;
-uint8_t timerHour = 0, timerMinute = 0, timerDay = 1, timerMonth = 1;
-uint16_t timerYear = 2024;
+uint8_t timerHour = 0, timerMinute = 0, timerDay = 0, timerMonth = 0;
+uint16_t timerYear = 0;
 bool timerIsActive = false;
 
 // Preferences
@@ -103,19 +107,16 @@ unsigned long lastSaveTime = 0;
 void updateDHT();
 void checkUpdate();
 void setupNetwork();
-void saveToMemory();
 void updateLEDState();
 void handleAutoSave();
 void loadSettingsFromMemory();
 void espConectionStatusIndicator();
 void checkTimer(AsyncWebSocket *server);
-void sendCurrentStatus(AsyncWebSocket *server);
-void onWebSocketMessage(void *arg, uint8_t *data, size_t len);
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len);
 
 // ======================= Setup Function =======================
 void setup() {
-  setStampZone(2);
+  // setStampZone(2);
   // Serial.setTxBufferSize(1024);
   Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -123,7 +124,9 @@ void setup() {
     ;  // Wait for Serial to be ready
 
   setupNetwork();
+#ifdef OTA_ENABLE
   checkUpdate();
+#endif
   if (MDNS.begin(HOSTNAME)) {
     Serial.println("mDNS responder started");
     Serial.print("You can access the server at http://");
@@ -137,7 +140,12 @@ void setup() {
   FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
   loadSettingsFromMemory();
   Wire.begin();
+#ifdef DS3231_MODULE_ENABLE
   if (!ds.begin()) ds.setBuildTime();
+#endif
+  NTP.begin(gmt);  // запустить
+  NTP.setPeriod(5000);
+  NTP.setHost(ntpUrl);
   Serial.println("\nSetup completed!\n\n");
 }
 
@@ -146,11 +154,16 @@ void loop() {
   espConectionStatusIndicator();
   ws.cleanupClients();
   updateLEDState();
+#ifdef DTH_ENABLE
   updateDHT();
+#endif
   if (dnsServerStarted) dnsServer.processNextRequest();
   checkTimer(&ws);
+#ifdef OTA_ENABLE
   if (ota.tick()) {
     Serial.println((int)ota.getError());
   }
+#endif
+  NTP.tick();  // вызывать тикер в loop
   handleAutoSave();
 }

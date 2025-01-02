@@ -30,40 +30,34 @@ void breathingMode() {
   static uint8_t brightness = 0;
   static int direction = 1;  // 1 для увеличения, -1 для уменьшения
   static unsigned long lastUpdate = 0;
-  const unsigned long interval = 30;  // Интервал обновления яркости
-  FastLED.setBrightness(255);
+  unsigned long interval = map(breathingSpeed, 1, 255, 10, 60);  // Преобразование скорости в интервал (чем больше скорость, тем меньше интервал)
+
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     brightness += direction * 5;  // Шаг изменения яркости
-
     if (brightness == 0 || brightness == 255) {
       direction *= -1;  // Смена направления при достижении предела
     }
 
     // Преобразование цвета из RGB в HSV
     CHSV hsvColor = rgb2hsv_approximate(color);
-
     for (int i = 0; i < REAL_NUM_LEDS; i++) {
       leds[i] = CHSV(hsvColor.h, hsvColor.s, brightness);
     }
+
     FastLED.show();
   }
 }
 
-void strobeMode() {
-  static bool on = true;
+void gradientFillMode() {
   static unsigned long lastUpdate = 0;
-  const unsigned long interval = 200;  // Интервал переключения состояния
-  FastLED.setBrightness(255);
+  const unsigned long interval = 200;  // Interval for updating the gradient
+  FastLED.setBrightness(commonBrightness);
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
-    if (on) {
-      fill_solid(leds, REAL_NUM_LEDS, color);
-    } else {
-      fill_solid(leds, REAL_NUM_LEDS, CRGB::Black);  // Выключить светодиоды
-    }
+    // Fill gradient between colors
+    fill_gradient_RGB(leds, 0, customGradient[0], REAL_NUM_LEDS - 1, customGradient[1]);
     FastLED.show();
-    on = !on;  // Переключить состояние
   }
 }
 
@@ -75,7 +69,7 @@ void meteorMode() {
   if (millis() - lastUpdate >= interval) {
     lastUpdate = millis();
     fadeToBlackBy(leds, REAL_NUM_LEDS, 64);  // Постепенное затухание следов
-    leds[pos] = color;  // Основное тело метеора
+    leds[pos] = color;                       // Основное тело метеора
     pos++;
     if (pos >= REAL_NUM_LEDS) pos = 0;  // Возврат к началу
     FastLED.show();
@@ -106,9 +100,9 @@ void colorWipeMode() {
 }
 
 void fireMode() {
-  static byte* heat = nullptr;              // Указатель на массив тепла
-  static unsigned long lastUpdate = 0;      // Время последнего обновления
-  const unsigned long interval = 30;        // Интервал обновления (в миллисекундах)
+  static byte* heat = nullptr;          // Указатель на массив тепла
+  static unsigned long lastUpdate = 0;  // Время последнего обновления
+  const unsigned long interval = 30;    // Интервал обновления (в миллисекундах)
   // Проверяем, нужно ли переинициализировать массив
   static uint16_t previousLedCount = 0;
   if (REAL_NUM_LEDS != previousLedCount) {
@@ -176,7 +170,7 @@ void sparkleMode() {
     lastUpdate = millis();
     fadeToBlackBy(leds, REAL_NUM_LEDS, 60);  // Постепенно затухают остальные светодиоды
     int pos = random(REAL_NUM_LEDS);         // Случайная позиция
-    leds[pos] = color;                  // Яркая белая вспышка
+    leds[pos] = color;                       // Яркая белая вспышка
     FastLED.show();
   }
 }
@@ -242,7 +236,7 @@ void updateLEDState() {
         breathingMode();  // Эффект дыхания
         break;
       case 3:
-        strobeMode();  // Стробоскоп
+        gradientFillMode();  // gradientFillMode
         break;
       case 4:
         sparkleMode();  // Эффект искр
@@ -270,7 +264,7 @@ void updateLEDState() {
         break;
     }
   } else {
-    fadeToBlackBy(leds, REAL_NUM_LEDS, 2);  // Постепенно выключить ленту
+    fadeToBlackBy(leds, REAL_NUM_LEDS, 5);  // Постепенно выключить ленту
     FastLED.show();
   }
 }
