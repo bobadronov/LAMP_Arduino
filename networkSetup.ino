@@ -1,80 +1,95 @@
+#include "config.h"
 // Captive Portal configuration
 const IPAddress localIP(4, 3, 2, 1);
 const IPAddress gatewayIP(4, 3, 2, 1);
 const IPAddress subnetMask(255, 255, 255, 0);
 const String localIPURL = "http://4.3.2.1";
-
 // Функция для получения текущих WiFi-учетных данных
 void getWifiCreds();
+// Функция для сохранения новых учетных данных WiFi
 void saveNewCreds(const String &ssid, const String &password, const String &deviceName);
+// Функция для перезапуска ESP (микроконтроллера)
 void espRestart();
-
 const char index_html[] PROGMEM = R"=====(
-      <!DOCTYPE html>
-      <html>
-      <head>
-          <title>Wi-Fi Setup</title>
-          <style>
-              body {
-                  font-family: Arial, sans-serif;
-                  background-color: #f4f4f9;
-                  color: #333;
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                  height: 100vh;
-                  margin: 0;
-              }
-              .container {
-                  text-align: center;
-                  background: white;
-                  padding: 20px;
-                  border-radius: 8px;
-                  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-              }
-              h1 {
-                  color: #06cc13;
-              }
-              input[type="text"], input[type="password"] {
-                  width: 80%;
-                  padding: 10px;
-                  margin: 10px 0;
-                  border: 1px solid #ccc;
-                  border-radius: 4px;
-                  box-sizing: border-box;
-              }
-              button {
-                  background-color: #06cc13;
-                  color: white;
-                  border: none;
-                  padding: 10px 20px;
-                  border-radius: 4px;
-                  cursor: pointer;
-                  font-size: 16px;
-              }
-              button:hover {
-                  background-color: #05a110;
-              }
-          </style>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      </head>
-      <body>
-          <div class="container">
-              <h1>Wi-Fi Setup</h1>
-              <form action="/wifi-config" method="POST">
-                  <label for="ssid">Wi-Fi SSID:</label><br>
-                  <input type="text" id="ssid" name="ssid" placeholder="Enter SSID" required><br>
-                  <label for="password">Wi-Fi Password:</label><br>
-                  <input type="password" id="password" name="password" placeholder="Enter Password" ><br>
-                  <label for="deviceName">Device Name:</label><br>
-                  <input type="text" id="deviceName" name="deviceName" placeholder="Enter Device Name" required><br>
-                  <button type="submit">Save</button>
-              </form>
-          </div>
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Wi-Fi Setup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1e1e2f;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: #28293d;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            color: #4caf50;
+        }
+        input[type="text"], input[type="password"] {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #444;
+            border-radius: 4px;
+            box-sizing: border-box;
+            background-color: #333;
+            color: #fff;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #4caf50;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #43a047;
+        }
+        label {
+            color: #bbb;
+        }
+        @media (max-width: 600px) {
+            input[type="text"], input[type="password"], button {
+                width: 90%;
+                font-size: 14px;
+            }
+        }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <body>
+    <div class="container">
+        <h1>Wi-Fi Setup</h1>
+        <form action="/wifi-config" method="POST">
+            <label for="ssid">Wi-Fi SSID:</label><br>
+            <input type="text" id="ssid" name="ssid" placeholder="Enter SSID" required><br>
+            <label for="password">Wi-Fi Password:</label><br>
+            <input type="password" id="password" name="password" placeholder="Enter Password"><br>
+            <label for="deviceName">Device Name:</label><br>
+            <input type="text" id="deviceName" name="deviceName" placeholder="Enter Device Name" required><br>
+            <button type="submit">Save</button>
+        </form>
+      </div>
       </body>
       </html>
-    )====="
-;
+    )=====";
 
 // const char control_html[] PROGMEM = R"=====(
 //   <!DOCTYPE html>
@@ -162,6 +177,7 @@ void startCaptivePortal() {
   // Configure and start the Access Point
   WiFi.softAPConfig(localIP, gatewayIP, subnetMask);
   WiFi.softAP(AP_SSID, NULL, 6, false, 4);
+
   // Disable AMPDU RX on the ESP32 WiFi to fix a bug on Android
   esp_wifi_stop();
   esp_wifi_deinit();
@@ -170,6 +186,7 @@ void startCaptivePortal() {
   esp_wifi_init(&my_config);
   esp_wifi_start();
   vTaskDelay(100 / portTICK_PERIOD_MS);  // Add a small delay
+
   // Start DNS Server
   dnsServer.setTTL(3600);
   dnsServer.start(53, "*", localIP);
@@ -181,51 +198,66 @@ void startCaptivePortal() {
     response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
     request->send(response);
   });
-  // Required
+
+  // Required for handling different captive portal requests from various OS
   server.on("/connecttest.txt", [](AsyncWebServerRequest *request) {
-    request->redirect("http://logout.net");
-  });  // windows 11 captive portal workaround
+    request->redirect("http://logout.net");  // windows 11 captive portal workaround
+  });
+
   server.on("/wpad.dat", [](AsyncWebServerRequest *request) {
-    request->send(404);
-  });  // Honestly don't understand what this is but a 404 stops win 10 keep calling this repeatedly and panicking the esp32 :)
+    request->send(404);  // Stop Win10 from requesting this file repeatedly
+  });
+
+  // Redirect to the attacker's local web server for captive portal redirection
   server.on("/generate_204", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // android captive portal redirect
+    request->redirect("http://connect.rom.miui.com");  // Redirect to attacker's server
+  });
+
   server.on("/redirect", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // microsoft redirect
+    request->redirect(localIPURL);  // redirect for Microsoft captive portal
+  });
+
   server.on("/hotspot-detect.html", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // apple call home
+    request->redirect(localIPURL);  // apple captive portal redirection
+  });
+
   server.on("/canonical.html", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // firefox captive portal call home
+    request->redirect(localIPURL);  // Firefox captive portal redirect
+  });
+
   server.on("/success.txt", [](AsyncWebServerRequest *request) {
-    request->send(200);
-  });  // firefox captive portal call home
+    request->send(200);  // Firefox captive portal success check
+  });
+
   server.on("/ncsi.txt", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
-  });  // windows call home
-  // B Tier (uncommon)
+    request->redirect(localIPURL);  // Windows captive portal redirect
+  });
+
+  // B Tier (uncommon cases, but helpful for complete coverage)
   server.on("/chrome-variations/seed", [](AsyncWebServerRequest *request) {
-    request->send(200);
-  });  //chrome captive portal call home
-       //  server.on("/service/update2/json",[](AsyncWebServerRequest *request){request->send(200);}); //firefox?
-       //  server.on("/chat",[](AsyncWebServerRequest *request){request->send(404);}); //No stop asking Whatsapp, there is no internet connection
+    request->send(200);  // Chrome captive portal check
+  });
+
+  // Handle requests from other OS and browsers
   server.on("/startpage", [](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
+    request->redirect(localIPURL);  // Redirect for devices calling a "start" page
   });
-  // return 404 to webpage icon
+
+  // Return 404 for favicon requests (we don't need a favicon here)
   server.on("/favicon.ico", [](AsyncWebServerRequest *request) {
-    request->send(404);
-  });  // webpage icon
-  server.onNotFound([](AsyncWebServerRequest *request) {
-    request->redirect(localIPURL);
+    request->send(404);  // favicon icon request
   });
-  // Serial.println("Captive Portal started.");
-  Serial.print("AP IP Address: ");
-  Serial.println(WiFi.softAPIP());
+
+  // Catch-all for any other request that doesn't match
+  server.onNotFound([](AsyncWebServerRequest *request) {
+    request->redirect(localIPURL);  // Redirect unknown paths to the captive portal
+  });
+
+  // Log the AP IP address for debugging
+  DEBUG_PRINT("AP IP Address: ");
+  DEBUG_PRINTLN(WiFi.softAPIP());
 }
+
 // Main network setup
 void setupNetwork() {
   getWifiCreds();
@@ -237,17 +269,17 @@ void setupNetwork() {
     delay(500);
     digitalWrite(LED_BUILTIN, HIGH);
     delay(500);
-    Serial.println("Connecting to WiFi...");
+    DEBUG_PRINTLN("Connecting to WiFi...");
   }
   if (WiFi.status() != WL_CONNECTED) {
     espInAPMode = true;
-    Serial.println("WiFi connection failed. Starting AP Mode...");
+    DEBUG_PRINTLN("WiFi connection failed. Starting AP Mode...");
     startCaptivePortal();
   } else {
     espInAPMode = false;
-    Serial.println("Connected to WiFi.");
-    Serial.print("IP Address: ");
-    Serial.println(WiFi.localIP());
+    DEBUG_PRINTLN("Connected to WiFi.");
+    DEBUG_PRINT("IP Address: ");
+    DEBUG_PRINTLN(WiFi.localIP());
   }
 
   server.on("/wifi-config", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -265,10 +297,10 @@ void setupNetwork() {
       deviceName = request->getParam("deviceName", true)->value();
     }
 
-    Serial.println("Received Wi-Fi credentials:");
-    Serial.println("SSID: " + ssid);
-    Serial.println("Password: " + password);
-    Serial.println("Device Name: " + deviceName);
+    DEBUG_PRINTLN("Received Wi-Fi credentials:");
+    DEBUG_PRINTLN("SSID: " + ssid);
+    DEBUG_PRINTLN("Password: " + password);
+    DEBUG_PRINTLN("Device Name: " + deviceName);
 
     saveNewCreds(ssid, password, deviceName);
 
@@ -296,8 +328,8 @@ void setupNetwork() {
       return;
     }
     // Лог для отладки
-    Serial.println("Selected Mode Index: " + String(mode));
-    Serial.println("Selected Color: " + newColor);
+    DEBUG_PRINTLN("Selected Mode Index: " + String(mode));
+    DEBUG_PRINTLN("Selected Color: " + newColor);
     // Применение настроек
     currentMode = mode;
     long hexColor = strtol(newColor.c_str() + 1, nullptr, 16);

@@ -1,3 +1,5 @@
+#include "config.h"
+
 void updateDHT() {
   static unsigned long lastUpdate = 0;
   if (millis() - lastUpdate >= 60000) {  // 60 секунд
@@ -13,8 +15,8 @@ void updateDHT() {
     // Serial.printf("Humidity updated: %.2f\n", humidity);
     // Логирование ошибок
     if (isnan(newTemp) || isnan(newHum)) {
-      Serial.println("Failed to read temperature.");
-      Serial.println("Failed to read humidity.");
+      DEBUG_PRINTLN("Failed to read temperature.");
+      DEBUG_PRINTLN("Failed to read humidity.");
     }
   }
 }

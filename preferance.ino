@@ -1,15 +1,17 @@
+#include "config.h"
+
 void saveNewCreds(const String &ssid, const String &password, const String &deviceName) {
   preferences.begin("config", false);           // Открываем пространство "wifi" для записи
   preferences.putString("ssid", ssid);          // Сохраняем SSID
   preferences.putString("password", password);  // Сохраняем пароль
   preferences.putString("deviceName", deviceName);
-  Serial.println("New WiFi credentials saved:");
-  Serial.print("SSID: ");
-  Serial.println(ssid);
-  Serial.print("Password: ");
-  Serial.println(password);
-  Serial.print("Device name: ");
-  Serial.println(deviceName);
+  DEBUG_PRINTLN("New WiFi credentials saved:");
+  DEBUG_PRINT("SSID: ");
+  DEBUG_PRINTLN(ssid);
+  DEBUG_PRINT("Password: ");
+  DEBUG_PRINTLN(password);
+  DEBUG_PRINT("Device name: ");
+  DEBUG_PRINTLN(deviceName);
   preferences.end();  // Закрываем хранилище
 }
 // Функция для получения текущих учетных данных
@@ -21,32 +23,32 @@ void getWifiCreds() {
   HOSTNAME = deviceName;
   SSID = ssid;
   PASSWORD = pass;
-  Serial.println("New WiFi credentials load:");
-  Serial.print("SSID: ");
-  Serial.println(SSID);
-  Serial.print("Password: ");
-  Serial.println(PASSWORD);
-  Serial.print("Device name: ");
-  Serial.println(HOSTNAME);
+  DEBUG_PRINTLN("New WiFi credentials load:");
+  DEBUG_PRINT("SSID: ");
+  DEBUG_PRINTLN(SSID);
+  DEBUG_PRINT("Password: ");
+  DEBUG_PRINTLN(PASSWORD);
+  DEBUG_PRINT("Device name: ");
+  DEBUG_PRINTLN(HOSTNAME);
   preferences.end();  // Закрываем хранилище
 }
 // Функция сохранения данных
 void saveToMemory() {
-  preferences.begin("config", false);  // Открываем Preferences в режиме записи
+  preferences.begin("config", false);                   // Открываем Preferences в режиме записи
+  preferences.putUInt("REAL_NUM_LEDS", REAL_NUM_LEDS);  // Зберігаємо кількість світлодіодів
   preferences.putBool("ledState", ledState);
   preferences.putUInt("color", (uint32_t)color);  // CRGB преобразуем в uint32_t
   preferences.putUChar("currentMode", currentMode);
   preferences.putUChar("commonBrightness", commonBrightness);
   preferences.putBool("flagIsStatic", flagIsStatic);
-  preferences.putUChar("flagSpeed", flagSpeed);
-  preferences.putFloat("rainbowSpeed", rainbowSpeed);
+  preferences.putFloat("animationSpeed", animationSpeed);
   preferences.putBool("rainbowIsStatic", rainbowIsStatic);
   // Сохраняем массив цветов
-  for (uint8_t i = 0; i < REAL_NUM_LEDS; i++) {
+  for (uint8_t i = 0; i < 10; i++) {
     preferences.putUInt(String("customColor" + String(i)).c_str(), (uint32_t)customColorsArray[i]);
   }
   preferences.end();  // Закрываем Preferences
-  Serial.println("Data saved to memory.");
+  DEBUG_PRINTLN("Data saved to memory.");
 }
 // Функция загрузки данных
 void loadSettingsFromMemory() {
@@ -57,15 +59,14 @@ void loadSettingsFromMemory() {
   currentMode = preferences.getUChar("currentMode", 0);
   commonBrightness = preferences.getUChar("commonBrightness", 255);
   flagIsStatic = preferences.getBool("flagIsStatic", true);
-  flagSpeed = preferences.getUChar("flagSpeed", 1);
-  rainbowSpeed = preferences.getFloat("rainbowSpeed", 2.0);
+  animationSpeed = preferences.getFloat("animationSpeed", 2.0);
   rainbowIsStatic = preferences.getBool("rainbowIsStatic", false);
   // Загружаем массив цветов
-  for (uint8_t i = 0; i < REAL_NUM_LEDS; i++) {
+  for (uint8_t i = 0; i < 10; i++) {
     customColorsArray[i] = (CRGB)preferences.getUInt(String("customColor" + String(i)).c_str(), 0x000000);
   }
   preferences.end();  // Закрываем Preferences
-  Serial.println("Data loaded from memory.");
+  DEBUG_PRINTLN("Data loaded from memory.");
 }
 // Вызов сохранения каждые 60 секунд
 void handleAutoSave() {
@@ -74,10 +75,4 @@ void handleAutoSave() {
     lastSaveTime = millis();
     saveToMemory();
   }
-}
-// Функция для сохранения реального количества светодиодов 
-void saveRealLedCount(uint16_t ledCount) {
-  preferences.begin("config", false);              // Відкриваємо розділ "config" для запису
-  preferences.putUInt("REAL_NUM_LEDS", ledCount);  // Зберігаємо кількість світлодіодів
-  preferences.end();                               // Завершуємо роботу з Preferences
 }

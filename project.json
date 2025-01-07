@@ -1,8 +1,8 @@
 {
   "name": "LAMP_Arduino",
-  "about": "ESP32 + WS2812B + websocket + NTP + DHT",
-  "version": "1.0.5",
-  "notes": "first commit",
+  "about": "ESP32 + WS2812B + WebSocket + NTP + DHT+ remote control",
+  "version": "1.0.6",
+  "notes": "-bug fixes",
   "builds": [
     {
       "chipFamily": "ESP32",
