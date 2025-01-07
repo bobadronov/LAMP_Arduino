@@ -1,30 +1,25 @@
 # LAMP_Arduino
 
 ## Overview
-LAMP_Arduino is a project for creating a smart LED lamp controlled by an ESP32 microcontroller. It supports various effects, a real-time clock module (DS3231), and an optional temperature and humidity sensor (DHT11).
+LAMP_Arduino is a project for creating a smart LED lamp controlled by an ESP32 microcontroller. It supports various effects, integrates with a real-time clock module (DS3231), and optionally supports a temperature and humidity sensor (DHT11).
 
 ## Features
 - Wi-Fi configuration through a captive portal
+- Wireless controll via WiFi on Android, iOS, Windows
 - Multiple LED effects (static colors, rainbow, fire, etc.)
 - Real-time clock integration (DS3231) for time-based operations
 - Optional temperature and humidity monitoring (DHT11)
+- Button support for additional input options
+- NTP synchronization for accurate timekeeping
 
 ## Requirements
+
 ### Hardware
 - **ESP32**
 - **WS2812B LED strip**
 - **DS3231** (optional)
 - **DHT11** (optional)
 
-### Software
-- Arduino IDE or PlatformIO with the required libraries:
-  - `FastLED`
-  - `ESPAsyncWebServer`
-  - `DNSServer`
-  - `DHT`
-  - `GyverDS3231`
-  - `ArduinoJson`
-  - `Preferences`
 
 ## Wiring Diagram
 
@@ -32,7 +27,7 @@ LAMP_Arduino is a project for creating a smart LED lamp controlled by an ESP32 m
 | WS2812B Pin | ESP32 Pin          |
 |-------------|--------------------|
 | GND         | GND                |
-| VCC         | 5V                |
+| VCC         | 5V                 |
 | Data In     | GPIO12             |
 
 ### DS3231 to ESP32
@@ -53,11 +48,4 @@ LAMP_Arduino is a project for creating a smart LED lamp controlled by an ESP32 m
 ## Installation
 1. Clone this repository:
    ```bash
-   git clone https://github.com/yourusername/LAMP_Arduino.git
-   
-   https://github.com/bobadronov/LAMP_Arduino.git
-
-## TODO:
-  Implement encoder management for additional input options.
-  Integrate GyverNTP to fetch and synchronize time from an NTP server.
-  
+   git clone https://github.com/bobadronov/LAMP_Arduino.git
