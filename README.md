@@ -1,5 +1,19 @@
 # LAMP_Arduino
 
+A smart LED lamp controlled by an ESP32 microcontroller, offering various lighting effects and sensor integrations. The project uses Kotlin Multiplatform for the app, providing cross-platform support across Android, Windows, and iOS.
+
+**App repository:** [LAMP_Multiplatform](https://github.com/bobadronov/LAMP_Multiplatform)
+
+## Tested Platforms
+
+| Platform  | Status               |
+|-----------|----------------------|
+| Android   | ✅ Tested             |
+| Windows   | ✅ Tested             |
+| MacOS     | ⚠️ Not tested         |
+| iOS       | ⚠️ Not tested         |
+| Linux     | ⚠️ Not tested         |
+
 ## Overview
 LAMP_Arduino is a project for creating a smart LED lamp controlled by an ESP32 microcontroller. It supports various effects, integrates with a real-time clock module (DS3231), and optionally supports a temperature and humidity sensor (DHT11).
 
