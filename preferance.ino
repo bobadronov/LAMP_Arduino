@@ -1,5 +1,3 @@
-#include "config.h"
-
 void saveNewCreds(const String &ssid, const String &password, const String &deviceName) {
   preferences.begin("config", false);           // Открываем пространство "wifi" для записи
   preferences.putString("ssid", ssid);          // Сохраняем SSID
@@ -54,7 +52,7 @@ void saveToMemory() {
 void loadSettingsFromMemory() {
   preferences.begin("config", true);  // Открываем Preferences в режиме чтения
   REAL_NUM_LEDS = preferences.getUInt("REAL_NUM_LEDS", 10);
-  ledState = preferences.getBool("ledState", false);
+  ledState = preferences.getBool("ledState", true);
   color = (CRGB)preferences.getUInt("color", 0xFFFFFF);  // uint32_t преобразуем обратно в CRGB
   currentMode = preferences.getUChar("currentMode", 0);
   commonBrightness = preferences.getUChar("commonBrightness", 255);

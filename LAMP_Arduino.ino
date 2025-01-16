@@ -58,7 +58,6 @@ const String ntpUrl = "ua.pool.ntp.org";
 // #define OTA_ENABLE // comment out if not enabled
 
 // ======================= Constants and Libraries =======================
-#define DEBUG_ENABLE
 #include "config.h"
 
 #define AP_SSID "ESP32-AP-LED"
@@ -91,8 +90,8 @@ uint8_t currentColorIndex = 0;  // Индекс текущего цвета
 const uint8_t numColors = sizeof(colors) / sizeof(colors[0]);
 CRGB customColorsArray[10];
 CRGB customGradient[2];
-CRGB fadeColor1 = CRGB::Yellow;
-CRGB fadeColor2 = CRGB::Blue;
+CRGB customFadeColor1 = CRGB::Yellow;
+CRGB customFadeColor2 = CRGB::Blue;
 uint8_t commonBrightness = 255;
 bool ledState = true;
 bool flagIsStatic = true;
@@ -206,7 +205,7 @@ void setup() {
 void loop() {
   espConectionStatusIndicator();
   // ws.cleanupClients();
-  handleButton();
+  handleButton(&ws);
   updateLEDState();
 #ifdef DTH_ENABLE
   updateDHT();

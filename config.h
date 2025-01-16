@@ -20,18 +20,18 @@
 #include <GyverButton.h>
 #include <ESPAsyncWebServer.h>
 // Якщо DEBUG_ENABLE не визначено, можна задати його тут (необов'язково)
-#ifndef DEBUG_ENABLE
+
 #define DEBUG_ENABLE  // Увімкнути за замовчуванням, якщо не визначено
-#endif
+
 // Макроси для виводу у Serial
 #ifdef DEBUG_ENABLE
-  #define DEBUG_PRINT(x) Serial.print(x)          // Вивід без переносу рядка
-  #define DEBUG_PRINTLN(x) Serial.println(x)      // Вивід з переносом рядка
-  #define DEBUG_PRINTF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__) // Форматований вивід
+#define DEBUG_PRINT(x) Serial.print(x)                            // Вивід без переносу рядка
+#define DEBUG_PRINTLN(x) Serial.println(x)                        // Вивід з переносом рядка
+#define DEBUG_PRINTF(fmt, ...) Serial.printf(fmt, ##__VA_ARGS__)  // Форматований вивід
 #else
-  #define DEBUG_PRINT(x)      // Нічого не робити, якщо DEBUG_DISABLE
-  #define DEBUG_PRINTLN(x)    // Нічого не робити
-  #define DEBUG_PRINTF(fmt, ...) // Нічого не робити
+#define DEBUG_PRINT(x)          // Нічого не робити, якщо DEBUG_DISABLE
+#define DEBUG_PRINTLN(x)        // Нічого не робити
+#define DEBUG_PRINTF(fmt, ...)  // Нічого не робити
 #endif
 
-#endif // CONFIG_H
+#endif  // CONFIG_H

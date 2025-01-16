@@ -1,5 +1,3 @@
-#include "config.h"
-
 void sendAllStatus(AsyncWebSocket *server);
 void sendError(AsyncWebSocket *server, String state);
 

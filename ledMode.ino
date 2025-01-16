@@ -54,7 +54,7 @@ void runningLightsMode() {
   static unsigned long lastUpdate = 0;
   static float position = 0;  // Поточная позиция волны
   FastLED.setBrightness(255);
-  if (millis() - lastUpdate >= animationSpeed) {
+  if (millis() - lastUpdate >= animationSpeed * 2) {
     lastUpdate = millis();
     position += 0.5;  // Движение волны
     for (int i = 0; i < REAL_NUM_LEDS; i++) {
@@ -108,7 +108,7 @@ void fade1Mode() {
   static uint8_t brightness = 0;
   static int direction = 1;
   static unsigned long lastUpdate = 0;
-  if (millis() - lastUpdate >= animationSpeed) {
+  if (millis() - lastUpdate >= animationSpeed / 1.5) {
     lastUpdate = millis();
     brightness += direction * 5;
     if (brightness == 0 || brightness == 255) {
@@ -123,42 +123,54 @@ void fade1Mode() {
 }
 // 7. FADE2
 void fade2Mode() {
-  static uint8_t brightness = 0;
-  static int direction = 1;
   static bool evenPhase = true;
   static unsigned long lastUpdate = 0;
+  static uint8_t phase = 0; // Phase for cubic wave
 
   if (millis() - lastUpdate >= animationSpeed) {
     lastUpdate = millis();
-    brightness += direction * 5;
-    if (brightness == 0 || brightness == 255) {
-      direction *= -1;
-      if (brightness == 0) {
-        evenPhase = !evenPhase;
-      }
+
+    // Calculate the cubic wave value for smooth brightness transitions
+    uint8_t brightness = cubicwave8(phase);
+
+    // Increment phase to animate the wave
+    phase++;
+
+    // When phase completes a full cycle, reset it
+    if (phase >= 256) {
+      phase = 0;
+      evenPhase = !evenPhase; // Toggle between even and odd phase
     }
+
+    // Update LED colors based on cubic wave brightness
     for (int i = 0; i < REAL_NUM_LEDS; i++) {
       if (evenPhase) {
-        leds[i] = (i % 2 == 0) ? CRGB(fadeColor1.r * brightness / 255,
-                                      fadeColor1.g * brightness / 255,
-                                      fadeColor1.b * brightness / 255)
-                               : CRGB::Black;
+        // Even phase: Apply color1 to even-indexed LEDs
+        leds[i] = (i % 2 == 0) 
+            ? CRGB(customFadeColor1.r * brightness / 255,
+                   customFadeColor1.g * brightness / 255,
+                   customFadeColor1.b * brightness / 255)
+            : CRGB::Black;
       } else {
-        leds[i] = (i % 2 != 0) ? CRGB(fadeColor2.r * brightness / 255,
-                                      fadeColor2.g * brightness / 255,
-                                      fadeColor2.b * brightness / 255)
-                               : CRGB::Black;
+        // Odd phase: Apply color2 to odd-indexed LEDs
+        leds[i] = (i % 2 != 0)
+            ? CRGB(customFadeColor2.r * brightness / 255,
+                   customFadeColor2.g * brightness / 255,
+                   customFadeColor2.b * brightness / 255)
+            : CRGB::Black;
       }
     }
+
     FastLED.show();
   }
 }
+
 // 8. METEOR
 void meteorMode() {
   static unsigned long lastUpdate = 0;
   static int pos = 0;
   FastLED.setBrightness(255);
-  if (millis() - lastUpdate >= animationSpeed) {
+  if (millis() - lastUpdate >= animationSpeed * 4) {
     lastUpdate = millis();
     fadeToBlackBy(leds, REAL_NUM_LEDS, 70);
     leds[pos] = color;
@@ -171,7 +183,7 @@ void meteorMode() {
 void flagMode() {
   static unsigned long lastUpdate = 0;
   FastLED.setBrightness(commonBrightness);
-  if (millis() - lastUpdate >= animationSpeed) {
+  if (millis() - lastUpdate >= animationSpeed * 2) {
     lastUpdate = millis();
     if (flagIsStatic) {
       for (int i = 0; i < REAL_NUM_LEDS / 2; i++) {
@@ -191,7 +203,7 @@ void flagMode() {
           leds[i] = CHSV(40, 255, wave);
         }
       }
-      offset += 50;
+      offset += 10;
       FastLED.show();
     }
   }

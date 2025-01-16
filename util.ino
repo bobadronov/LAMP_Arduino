@@ -1,4 +1,3 @@
-#include "config.h"
 // Функция для перезапуска ESP
 void espRestart() {
   DEBUG_PRINTLN("Restarting ESP...");  // Сообщение о перезапуске

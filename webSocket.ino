@@ -1,5 +1,3 @@
-#include "config.h"
-
 String formatColorToString(CRGB color);
 // Функция для перезапуска ESP
 void espRestart();
@@ -54,8 +52,8 @@ void sendAllStatus(AsyncWebSocket *server) {
       jsonDoc["color"] = formatColorToString(color);
       break;
     case 7:  // FADE2
-      jsonDoc["fadeColor1"] = formatColorToString(fadeColor1);
-      jsonDoc["fadeColor2"] = formatColorToString(fadeColor2);
+      jsonDoc["customFadeColor1"] = formatColorToString(customFadeColor1);
+      jsonDoc["customFadeColor2"] = formatColorToString(customFadeColor2);
       break;
     case 8:  // METEOR
       jsonDoc["color"] = formatColorToString(color);
@@ -148,35 +146,39 @@ void handleSetupMessage(const String &jsonPart, AsyncWebSocket *server) {
     // Проверка и применение параметров, переданных через JSON
     if (doc.containsKey("ledState")) {
       ledState = doc["ledState"].as<bool>();  // Включение/выключение светодиодов
+      DEBUG_PRINTF("LED State: %s\n", ledState ? "ON" : "OFF");
     }
     if (doc.containsKey("color")) {
       String colorHex = doc["color"].as<String>();
       long newColor = strtol(colorHex.c_str() + 1, NULL, 16);                          // Пропускаем символ '#'
       color = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Устанавливаем цвет
     }
-    if (doc.containsKey("fadeColor1")) {
-      String colorHex = doc["fadeColor1"].as<String>();
+    if (doc.containsKey("customFadeColor1")) {
+      String colorHex = doc["customFadeColor1"].as<String>();
       long newColor = strtol(colorHex.c_str() + 1, NULL, 16);                               // Пропускаем символ '#'
-      fadeColor1 = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Устанавливаем цвет
+      customFadeColor1 = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Устанавливаем цвет
     }
-    if (doc.containsKey("fadeColor2")) {
-      String colorHex = doc["fadeColor2"].as<String>();
+    if (doc.containsKey("customFadeColor2")) {
+      String colorHex = doc["customFadeColor2"].as<String>();
       long newColor = strtol(colorHex.c_str() + 1, NULL, 16);                               // Пропускаем символ '#'
-      fadeColor2 = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Устанавливаем цвет
+      customFadeColor2 = CRGB((newColor >> 16) & 0xFF, (newColor >> 8) & 0xFF, newColor & 0xFF);  // Устанавливаем цвет
     }
     if (doc.containsKey("currentMode")) {
       currentMode = doc["currentMode"].as<uint8_t>();  // Устанавливаем текущий режим
+      // DEBUG_PRINTF("Mode: %s\n", currentMode);
       FastLED.clear();
       FastLED.show();
     }
     if (doc.containsKey("commonBrightness")) {
       commonBrightness = doc["commonBrightness"].as<uint8_t>();  // Устанавливаем общую яркость
+      // DEBUG_PRINTF("Brightness: %s\n", commonBrightness);
     }
     if (doc.containsKey("flagIsStatic")) {
       flagIsStatic = doc["flagIsStatic"].as<bool>();  // Флаг статического режима
     }
     if (doc.containsKey("animationSpeed")) {
       animationSpeed = doc["animationSpeed"].as<float>();  // Скорость радуги
+      // DEBUG_PRINTF("AnimationSpeed: %s\n", animationSpeed);
     }
     if (doc.containsKey("rainbowIsStatic")) {
       rainbowIsStatic = doc["rainbowIsStatic"].as<bool>();  // Флаг статичной радуги
@@ -202,7 +204,7 @@ void handleSetupMessage(const String &jsonPart, AsyncWebSocket *server) {
     if (doc.containsKey("REAL_NUM_LEDS")) {
       uint16_t numLeds = doc["REAL_NUM_LEDS"].as<uint16_t>();  // Обновляем количество светодиодов
       if (numLeds <= NUM_LEDS) REAL_NUM_LEDS = numLeds;
-      // FastLED.clear();                                      // Очистка текущих данных FastLED
+      // DEBUG_PRINTF("NUM_LEDS: %s\n", NUM_LEDS);
     }
     if (doc.containsKey("customGradient")) {
       // Обработка градиента
@@ -236,6 +238,7 @@ void onWebSocketMessage(AsyncWebSocket *server, void *arg, uint8_t *data, size_t
       timerHour = 0;
       timerMinute = 0;
       timerIsActive = false;
+      DEBUG_PRINTLN("Timer turn off.");
       sendError(server, "Timer turn off.");
     } else if (message.startsWith("REBOOT")) {
       espRestart();  // Перезапуск устройства
